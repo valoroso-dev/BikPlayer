@@ -78,6 +78,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private static final int MEDIA_ERROR = 100;
     private static final int MEDIA_INFO = 200;
 
+    private static final int MEDIA_VIDEO_DECODER_OPEN_ERROR = 999;
+
     protected static final int MEDIA_SET_VIDEO_SAR = 10001;
 
     //----------------------------------------
@@ -646,6 +648,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         _setStreamSelected(track, false);
     }
 
+    @Override
+    public final void setTrack(int trackType, int trackId){}
+    @Override
+    public final int getCurrentTrack(int trackType){return -1;}
     private native void _setStreamSelected(int stream, boolean select);
 
     @Override

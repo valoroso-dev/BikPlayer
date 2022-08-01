@@ -336,4 +336,13 @@ public class MediaPlayerProxy implements IMediaPlayer {
     public boolean isLooping() {
         return mBackEndMediaPlayer.isLooping();
     }
+
+    @Override
+    public final void setDrminfo(int drmType, int streamType, String licenseServerUrl, Map<String,String> headers, String reqMethod) {
+    }
+
+    @Override
+    public final void setTrack(int trackType, int trackId){}
+    @Override
+    public final int getCurrentTrack(int trackType){return -1;}
 }

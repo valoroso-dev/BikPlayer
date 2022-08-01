@@ -94,6 +94,8 @@
 #define EXTERNAL_CLOCK_MIN_FRAMES 2
 #define EXTERNAL_CLOCK_MAX_FRAMES 10
 
+#define PLAY_MIN_VIDEO_FRAMES 100
+
 /* Minimum SDL audio buffer size, in samples. */
 #define SDL_AUDIO_MIN_BUFFER_SIZE 512
 /* Calculate actual buffer size keeping in mind not cause too frequent audio callbacks */
@@ -129,7 +131,7 @@
 /* TODO: We assume that a decoded and resampled frame fits into this buffer */
 #define SAMPLE_ARRAY_SIZE (8 * 65536)
 
-#define MIN_PKT_DURATION 15
+#define MIN_PKT_DURATION 0
 
 #ifdef FFP_MERGE
 #define CURSOR_HIDE_DELAY 1000000
@@ -720,6 +722,9 @@ typedef struct FFPlayer {
     char *mediacodec_default_name;
     int ijkmeta_delay_init;
     int render_wait_start;
+
+    int live_quick_start;
+    int find_stream_keyframe_ok;
 } FFPlayer;
 
 #define fftime_to_milliseconds(ts) (av_rescale(ts, 1000, AV_TIME_BASE))

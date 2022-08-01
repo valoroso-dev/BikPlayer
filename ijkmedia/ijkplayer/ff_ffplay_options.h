@@ -206,6 +206,10 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(ijkmeta_delay_init),      OPTION_INT(0, 0, 1) },
     { "render-wait-start",          "render wait start",
         OPTION_OFFSET(render_wait_start),      OPTION_INT(0, 0, 1) },
+    { "live-quick-start",          "live quick start",
+        OPTION_OFFSET(live_quick_start),      OPTION_INT(1, 0, 1) },
+    { "av-sync-type",                    "av sync type, 0 by audio, 1 by video, 2 extrenal",
+        OPTION_OFFSET(av_sync_type),     OPTION_INT(0, 0, 2) },
     { NULL }
 };
 

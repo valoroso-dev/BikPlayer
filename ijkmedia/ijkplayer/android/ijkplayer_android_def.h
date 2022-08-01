@@ -40,7 +40,7 @@ enum media_event_type {
     MEDIA_TIMED_TEXT        = 99,       // not supported yet
     MEDIA_ERROR             = 100,      // arg1, arg2
     MEDIA_INFO              = 200,      // arg1, arg2
-
+    MEDIA_VIDEO_DECODER_OPEN_ERROR = 999,
 
     MEDIA_SET_VIDEO_SAR     = 10001,    // arg1 = sar.num, arg2 = sar.den
 };

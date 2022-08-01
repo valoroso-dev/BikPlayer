@@ -68,6 +68,21 @@ public interface IMediaPlayer {
     int MEDIA_ERROR_UNSUPPORTED = -1010;
     int MEDIA_ERROR_TIMED_OUT = -110;
 
+    //DRM
+    int DRM_TYPE_NON = 0;
+    int DRM_TYPE_GOOSE = 1;
+    int DRM_TYPE_IREDO = 2;
+    int DRM_TYPE_WIDEVINE = 3;
+    int DRM_TYPE_FAIRPLAY = 4;
+    int DRM_TYPE_PLAYREADY = 5;
+
+    String DRM_REQ_POST = "POST";
+    String DRM_REQ_GET = "GET";
+
+    int STREAM_DASH = 0;
+    int STREAM_HLS = 1;
+    int STREAM_OTHER = 2;
+
     void setDisplay(SurfaceHolder sh);
 
     void setDataSource(Context context, Uri uri)
@@ -142,7 +157,14 @@ public interface IMediaPlayer {
     void setOnInfoListener(OnInfoListener listener);
 
     void setOnTimedTextListener(OnTimedTextListener listener);
+    
+    // trackType 1: audio, 2: video, 3: subtitle
+    // exo only for now
+    void setTrack(int trackType, int trackId);
+    int getCurrentTrack(int trackType);
 
+    // not just for drm scenes, use when exo
+    void setDrminfo(int drmType, int streamType, String licenceServerUrl, Map<String,String> headers, String reqMethod);
     /*--------------------
      * Listeners
      */

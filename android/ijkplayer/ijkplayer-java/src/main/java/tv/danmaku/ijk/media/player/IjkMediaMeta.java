@@ -16,6 +16,7 @@ public class IjkMediaMeta {
     public static final String IJKM_KEY_VIDEO_STREAM = "video";
     public static final String IJKM_KEY_AUDIO_STREAM = "audio";
     public static final String IJKM_KEY_TIMEDTEXT_STREAM = "timedtext";
+    public static final String IJKM_KEY_TRACK_ID = "id";
 
     // stream meta
     public static final String IJKM_KEY_TYPE = "type";
@@ -189,6 +190,34 @@ public class IjkMediaMeta {
         mins %= 60;
         return String.format(Locale.US, "%02d:%02d:%02d", hours, mins, secs);
     }
+    public static IjkStreamMeta parseStreamMeta(Bundle mediaMeta, int index) {
+        IjkStreamMeta streamMeta = new IjkStreamMeta(index, mediaMeta);
+        streamMeta.mType = streamMeta.getString(IJKM_KEY_TYPE);
+        streamMeta.mLanguage = streamMeta.getString(IJKM_KEY_LANGUAGE);
+        streamMeta.mCodecName = streamMeta.getString(IJKM_KEY_CODEC_NAME);
+        streamMeta.mCodecProfile = streamMeta
+                .getString(IJKM_KEY_CODEC_PROFILE);
+        streamMeta.mCodecLongName = streamMeta
+                .getString(IJKM_KEY_CODEC_LONG_NAME);
+        streamMeta.mBitrate = streamMeta.getInt(IJKM_KEY_BITRATE);
+
+        if (streamMeta.mType.equalsIgnoreCase(IJKM_VAL_TYPE__VIDEO)) {
+            streamMeta.mWidth = streamMeta.getInt(IJKM_KEY_WIDTH);
+            streamMeta.mHeight = streamMeta.getInt(IJKM_KEY_HEIGHT);
+            streamMeta.mFpsNum = streamMeta.getInt(IJKM_KEY_FPS_NUM);
+            streamMeta.mFpsDen = streamMeta.getInt(IJKM_KEY_FPS_DEN);
+            streamMeta.mTbrNum = streamMeta.getInt(IJKM_KEY_TBR_NUM);
+            streamMeta.mTbrDen = streamMeta.getInt(IJKM_KEY_TBR_DEN);
+            streamMeta.mSarNum = streamMeta.getInt(IJKM_KEY_SAR_NUM);
+            streamMeta.mSarDen = streamMeta.getInt(IJKM_KEY_SAR_DEN);
+        } else if (streamMeta.mType.equalsIgnoreCase(IJKM_VAL_TYPE__AUDIO)) {
+            streamMeta.mSampleRate = streamMeta
+                    .getInt(IJKM_KEY_SAMPLE_RATE);
+            streamMeta.mChannelLayout = streamMeta
+                    .getLong(IJKM_KEY_CHANNEL_LAYOUT);
+        }
+        return streamMeta;
+    }
 
     public static IjkMediaMeta parse(Bundle mediaMeta) {
         if (mediaMeta == null)
@@ -291,6 +320,10 @@ public class IjkMediaMeta {
 
         public IjkStreamMeta(int index) {
             mIndex = index;
+        }
+        public IjkStreamMeta(int index, Bundle meta ) {
+            mIndex = index;
+            mMeta = meta;
         }
 
         public String getString(String key) {

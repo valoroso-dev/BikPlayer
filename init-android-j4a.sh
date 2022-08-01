@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-IJK_J4A_UPSTREAM=https://github.com/Bilibili/jni4android.git
-IJK_J4A_FORK=https://github.com/Bilibili/jni4android.git
+IJK_J4A_UPSTREAM=http://github.com/valoroso-dev/jni4android.git
+IJK_J4A_FORK=http://github.com/valoroso-dev/jni4android.git
 IJK_J4A_COMMIT=v0.0.2
 IJK_J4A_LOCAL_REPO=extra/jni4android
 

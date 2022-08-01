@@ -483,7 +483,7 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
         do {
             if (d->queue->nb_packets == 0)
                 SDL_CondSignal(d->empty_queue_cond);
-            if (ffp_packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished) < 0) {
+            if (ffp_packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished, opaque->decoder->avctx->codec_type) < 0) {
                 ret = -1;
                 goto fail;
             }
@@ -728,7 +728,7 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
         do {
             if (d->queue->nb_packets == 0)
                 SDL_CondSignal(d->empty_queue_cond);
-            if (ffp_packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished) < 0) {
+            if (ffp_packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished, opaque->decoder->avctx->codec_type) < 0) {
                 ret = -1;
                 goto fail;
             }
@@ -1584,7 +1584,8 @@ static int func_run_sync(IJKFF_Pipenode *node)
         ALOGE("%s: SetupThreadEnv failed\n", __func__);
         return -1;
     }
-
+    int decode_frame_error_count = 0;
+    bool decode_frame_sucessed = false;
     frame = av_frame_alloc();
     if (!frame)
         goto fail;
@@ -1600,6 +1601,16 @@ static int func_run_sync(IJKFF_Pipenode *node)
         int64_t timeUs = opaque->acodec_first_dequeue_output_request ? 0 : AMC_OUTPUT_TIMEOUT_US;
         got_frame = 0;
         ret = drain_output_buffer(env, node, timeUs, &dequeue_count, frame, &got_frame);
+        if (!decode_frame_sucessed && ffp->find_stream_keyframe_ok == 1) {
+            ALOGE("Rapid decode_frame_sucessed----got_frame = %d\n",got_frame);
+            if (got_frame) {
+                decode_frame_sucessed = true;
+            } else if (decode_frame_error_count++ > 10) {
+                ALOGE("Rapid decode_frame_error_count-----\n");
+                ret = -2;
+                goto fail;
+            }
+        }
         if (opaque->acodec_first_dequeue_output_request) {
             SDL_LockMutex(opaque->acodec_first_dequeue_output_mutex);
             opaque->acodec_first_dequeue_output_request = false;

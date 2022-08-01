@@ -333,7 +333,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *seria
     return ret;
 }
 
-static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished)
+static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished, int mediatype)
 {
     assert(finished);
     if (!ffp->packet_buffering)
@@ -343,9 +343,25 @@ static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket
         int new_packet = packet_queue_get(q, pkt, 0, serial);
         if (new_packet < 0)
             return -1;
-        else if (new_packet == 0) {
-            if (q->is_buffer_indicator && !*finished)
-                ffp_toggle_buffering(ffp, 1);
+        else if (new_packet == 0)
+		{
+            if (!*finished)
+            {
+                if (ffp->av_sync_type == AV_SYNC_VIDEO_MASTER)
+                {
+                    if (mediatype == AVMEDIA_TYPE_VIDEO)
+                    {
+                        ffp_toggle_buffering(ffp, 1);
+                    }
+                }
+                else
+                {
+                    if (q->is_buffer_indicator)
+                    {
+                        ffp_toggle_buffering(ffp, 1);
+                    }
+                }
+            }
             new_packet = packet_queue_get(q, pkt, 1, serial);
             if (new_packet < 0)
                 return -1;
@@ -563,7 +579,7 @@ fail0:
     return ret;
 }
 
-static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub) {
+static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSubtitle *sub, int mediatype) {
     int ret = AVERROR(EAGAIN);
 
     for (;;) {
@@ -620,7 +636,7 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 av_packet_move_ref(&pkt, &d->pkt);
                 d->packet_pending = 0;
             } else {
-                if (packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished) < 0)
+                if (packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished, mediatype) < 0)
                     return -1;
             }
         } while (d->queue->serial != d->pkt_serial);
@@ -1691,7 +1707,7 @@ static int get_video_frame(FFPlayer *ffp, AVFrame *frame)
     int got_picture;
 
     ffp_video_statistic_l(ffp);
-    if ((got_picture = decoder_decode_frame(ffp, &is->viddec, frame, NULL)) < 0)
+    if ((got_picture = decoder_decode_frame(ffp, &is->viddec, frame, NULL, AVMEDIA_TYPE_VIDEO)) < 0)
         return -1;
 
     if (got_picture) {
@@ -1998,7 +2014,7 @@ static int audio_thread(void *arg)
 
     do {
         ffp_audio_statistic_l(ffp);
-        if ((got_frame = decoder_decode_frame(ffp, &is->auddec, frame, NULL)) < 0)
+        if ((got_frame = decoder_decode_frame(ffp, &is->auddec, frame, NULL, AVMEDIA_TYPE_AUDIO)) < 0)
             goto the_end;
 
         if (got_frame) {
@@ -2358,7 +2374,7 @@ static int subtitle_thread(void *arg)
         if (!(sp = frame_queue_peek_writable(&is->subpq)))
             return 0;
 
-        if ((got_subtitle = decoder_decode_frame(ffp, &is->subdec, NULL, &sp->sub)) < 0)
+        if ((got_subtitle = decoder_decode_frame(ffp, &is->subdec, NULL, &sp->sub, AVMEDIA_TYPE_SUBTITLE)) < 0)
             break;
 
         pts = 0;
@@ -3148,7 +3164,11 @@ static int read_thread(void *arg)
     //int orig_nb_streams;
     //opts = setup_find_stream_info_opts(ic, ffp->codec_opts);
     //orig_nb_streams = ic->nb_streams;
-
+    int packet_buffering_temp = ffp->packet_buffering;
+    if (ffp->live_quick_start) {
+        ffp->packet_buffering =0;
+        ic->live_quick_start = 1;
+    }
 
     if (ffp->find_stream_info) {
         AVDictionary **opts = setup_find_stream_info_opts(ic, ffp->codec_opts);
@@ -3345,7 +3365,8 @@ static int read_thread(void *arg)
     if (ffp->seek_at_start > 0) {
         ffp_seek_to_l(ffp, (long)(ffp->seek_at_start));
     }
-
+    int frame_count = 0;
+    ffp->find_stream_keyframe_ok = 0;
     for (;;) {
         if (is->abort_request)
             break;
@@ -3444,7 +3465,7 @@ static int read_thread(void *arg)
                 SDL_CondSignal(is->video_accurate_seek_cond);
                 SDL_UnlockMutex(is->accurate_seek_mutex);
             }
-
+            ffp->find_stream_keyframe_ok = 0;
             ffp_notify_msg3(ffp, FFP_MSG_SEEK_COMPLETE, (int)fftime_to_milliseconds(seek_target), ret);
             ffp_toggle_buffering(ffp, 1);
         }
@@ -3516,6 +3537,22 @@ static int read_thread(void *arg)
         }
         pkt->flags = 0;
         ret = av_read_frame(ic, pkt);
+        if (ffp->live_quick_start) {
+            if (ffp->find_stream_keyframe_ok == 0) {
+                if (!(pkt->stream_index == st_index[AVMEDIA_TYPE_VIDEO] && (pkt->flags & AV_PKT_FLAG_KEY))) {
+                    continue;
+                } else {
+                    ffp->find_stream_keyframe_ok = 1;
+                }
+            } else {
+                if (ffp->find_stream_keyframe_ok == 0) {
+                    ffp->find_stream_keyframe_ok = 1;
+                }
+                if (frame_count++>20 && ffp->packet_buffering != packet_buffering_temp) {
+                    ffp->packet_buffering = packet_buffering_temp;
+                }
+            }
+        }
         if (ret < 0) {
             int pb_eof = 0;
             int pb_error = 0;
@@ -4410,7 +4447,8 @@ int ffp_seek_to_l(FFPlayer *ffp, long msec)
     if (!is)
         return EIJK_NULL_IS_PTR;
 
-    if (duration > 0 && seek_pos >= duration && ffp->enable_accurate_seek) {
+    // notify complete when seek to end ,ignore whether enable accurate_seek or not
+    if (duration > 0 && seek_pos >= duration ) {
         toggle_pause(ffp, 1);
         ffp_notify_msg1(ffp, FFP_MSG_COMPLETED);
         return 0;
@@ -4532,9 +4570,9 @@ int ffp_packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *serial)
     return packet_queue_get(q, pkt, block, serial);
 }
 
-int ffp_packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished)
+int ffp_packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished, int mediatype)
 {
-    return packet_queue_get_or_buffering(ffp, q, pkt, serial, finished);
+    return packet_queue_get_or_buffering(ffp, q, pkt, serial, finished, mediatype);
 }
 
 int ffp_packet_queue_put(PacketQueue *q, AVPacket *pkt)
@@ -4721,7 +4759,11 @@ void ffp_check_buffering_l(FFPlayer *ffp)
     }
 
     int buf_percent = -1;
-    if (buf_time_percent >= 0) {
+
+    if (is->videoq.nb_packets > PLAY_MIN_VIDEO_FRAMES) {
+        need_start_buffering = 1;
+        buf_percent = buf_size_percent;
+    }else if (buf_time_percent >= 0) {
         // alwas depend on cache duration if valid
         if (buf_time_percent >= 100)
             need_start_buffering = 1;
