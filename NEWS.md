@@ -1,6 +1,7 @@
 tag next
 --------------------------------
-- ffmpeg: upgrade to 4.0
+The following is inherited from the original ijkplayer
+--------------------------------
 
 tag k0.8.8
 --------------------------------
