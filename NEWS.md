@@ -1,4 +1,8 @@
 tag next
+
+- support DRM with ExoPlayer
+- update ExoPlayer to 2.17.1
+- add logic to startup playing when live
 --------------------------------
 The following is inherited from the original ijkplayer
 --------------------------------

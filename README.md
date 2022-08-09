@@ -1,13 +1,13 @@
-# Bikplayer
+# BikPlayer
 
  Platform
  --------
  Android
  iOS
 
-Bikplayer is an open source videoplayer based on bilibili's [ijkplayer](https://github.com/bilibili/ijkplayer)
+BikPlayer is an open source videoplayer based on bilibili's [ijkplayer](https://github.com/bilibili/ijkplayer)
 
-## Purpose of Bikplayer
+## Purpose of BikPlayer
 We used ijkplayer in product. At the beginning, it was only used directly without in-depth understanding. During the use, it encountered some playback problems and accumulated experience, and updated new features. The official response was slow, so a new warehouse was opened. Welcome to submit issue for discussion
 
 ### Build Environment & Original Features
@@ -15,6 +15,9 @@ We used ijkplayer in product. At the beginning, it was only used directly withou
 
 ### Latest Changes
 - [NEWS.md](NEWS.md)
+- support DRM with ExoPlayer
+- update ExoPlayer to 2.17.1
+- add logic to startup playing when live
 
 ### Features
 - Optimized the playback speed of ts format (h.264&h.265 encoding)
@@ -33,5 +36,5 @@ Licensed under LGPLv2.1 or later
 For licenses of dependent components, see [readme](https://github.com/bilibili/ijkplayer/blob/master/README.md)
 
 ### Commercial Use
-Bikplayer is base on ijkplayer, use the same license of ijkplayer，compliant with licensed under LGPLv2.1 or later. Please pay attention to the rights and obligations on your own.
+BikPlayer is base on ijkplayer, use the same license of ijkplayer，compliant with licensed under LGPLv2.1 or later. Please pay attention to the rights and obligations on your own.
 [IANAL](https://en.wikipedia.org/wiki/IANAL), you should always ask your lawyer for these stuffs before use it in your product.
