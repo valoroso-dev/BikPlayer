@@ -30,7 +30,6 @@ We used ijkplayer in product. At the beginning, it was only used directly withou
 - Please do not send e-mail to me. Public technical discussion on github is preferred.
 ### License
 ```
-Copyright (c) 2022 Valoroso
 Licensed under LGPLv2.1 or later
 ```
 For licenses of dependent components, see [readme](https://github.com/bilibili/ijkplayer/blob/master/README.md)
