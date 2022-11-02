@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-IJK_OPENSSL_UPSTREAM=http://github.com/valoroso-dev/openssl.git
-IJK_OPENSSL_FORK=http://github.com/valoroso-dev/openssl.git
+IJK_OPENSSL_UPSTREAM=https://github.com/valoroso-dev/openssl.git
+IJK_OPENSSL_FORK=https://github.com/valoroso-dev/openssl.git
 IJK_OPENSSL_COMMIT=OpenSSL_1_0_2q
 IJK_OPENSSL_LOCAL_REPO=extra/openssl
 
