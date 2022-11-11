@@ -211,6 +211,12 @@ static int packet_queue_put_nullpacket(PacketQueue *q, int stream_index)
     pkt->stream_index = stream_index;
     return packet_queue_put(q, pkt);
 }
+static void packet_queue_put_eof(PacketQueue *q)
+{
+    SDL_LockMutex(q->mutex);
+    q->recv_eof = 1;
+    SDL_UnlockMutex(q->mutex);
+}
 
 /* packet queue handling */
 static int packet_queue_init(PacketQueue *q)
@@ -227,6 +233,9 @@ static int packet_queue_init(PacketQueue *q)
         return AVERROR(ENOMEM);
     }
     q->abort_request = 1;
+    // the stream index & type , for multi audiotrack
+    q->stream_idx = INVALID_STREAM_INDEX;
+    q->media_type = AVMEDIA_TYPE_UNKNOWN;
     return 0;
 }
 
@@ -285,9 +294,77 @@ static void packet_queue_start(PacketQueue *q)
 {
     SDL_LockMutex(q->mutex);
     q->abort_request = 0;
+    q->work_background = 0;
+    // don't flush audio data
+    if(q->media_type !=AVMEDIA_TYPE_AUDIO) {
     packet_queue_put_private(q, &flush_pkt);
+    }
     SDL_UnlockMutex(q->mutex);
 }
+static void packet_queue_set_backgroud(PacketQueue *q)
+{
+    SDL_LockMutex(q->mutex);
+    q->abort_request = 0;
+    q->work_background = 1;
+    SDL_CondSignal(q->cond);
+    SDL_UnlockMutex(q->mutex);
+}
+static void packet_queue_sync_multi_audiotrack(PacketQueue *q, int64_t current_pos)
+{
+    SDL_LockMutex(q->mutex);
+    if (q->stream_idx == INVALID_STREAM_INDEX) {
+        SDL_UnlockMutex(q->mutex);
+        return;
+    }
+    MyAVPacketList *pkt1 = q->first_pkt;
+    while(pkt1) {
+        int64_t head_pos = 0;
+        if (pkt1->pkt.data != flush_pkt.data || pkt1->pkt.data != NULL) {
+             head_pos = (int64_t)((pkt1->pkt.pts + pkt1->pkt.duration - q->start_pts) * av_q2d(q->time_base) * 1000);
+            if( head_pos > current_pos) {
+                SDL_UnlockMutex(q->mutex);
+                return;
+            }
+        }
+        q->nb_packets--;
+        q->size -= pkt1->pkt.size + sizeof(*pkt1);
+        q->duration -= FFMAX(pkt1->pkt.duration, MIN_PKT_DURATION);
+        if (pkt1->pkt.data != flush_pkt.data && pkt1->pkt.data != NULL) {
+            q->total_packets--;
+        }
+
+        av_packet_unref(&pkt1->pkt);
+        q->first_pkt = pkt1->next;
+        if (!q->first_pkt) {
+            q->last_pkt = NULL;
+        }
+#ifdef FFP_MERGE
+    av_free(pkt1);
+#else
+    pkt1->next = q->recycle_pkt;
+    q->recycle_pkt = pkt1;
+#endif
+    pkt1 = q->first_pkt;
+    }
+    SDL_UnlockMutex(q->mutex);
+}
+static Frame *frame_queue_peek_readable(FrameQueue *f);
+static void sync_multi_audiotrack(FFPlayer* ffp)
+{
+    if(ffp->is->audio_stream_count <=1) {
+        return;
+    }
+    int64_t current_pos = (int64_t)ffp_get_current_position_l(ffp);
+    for(int i = 0; i<ffp->is->audio_stream_count;i++) {
+        PacketQueue *q = &(ffp->is->audioQues[i]);
+        // skip active track
+        if (q->stream_idx == ffp->is->audio_stream) {
+            continue;
+        }
+        packet_queue_sync_multi_audiotrack(q, current_pos);
+    }
+}
+
 
 /* return < 0 if aborted, 0 if no packet and > 0 if packet.  */
 static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *serial)
@@ -312,6 +389,10 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *seria
             q->size -= pkt1->pkt.size + sizeof(*pkt1);
             q->duration -= FFMAX(pkt1->pkt.duration, MIN_PKT_DURATION);
             *pkt = pkt1->pkt;
+            if (pkt != &flush_pkt && pkt->data != NULL)
+            {
+                q->total_packets--;
+            }
             if (serial)
                 *serial = pkt1->serial;
 #ifdef FFP_MERGE
@@ -333,7 +414,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *seria
     return ret;
 }
 
-static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished, int mediatype)
+static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished)
 {
     assert(finished);
     if (!ffp->packet_buffering)
@@ -343,25 +424,9 @@ static int packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket
         int new_packet = packet_queue_get(q, pkt, 0, serial);
         if (new_packet < 0)
             return -1;
-        else if (new_packet == 0)
-		{
-            if (!*finished)
-            {
-                if (ffp->av_sync_type == AV_SYNC_VIDEO_MASTER)
-                {
-                    if (mediatype == AVMEDIA_TYPE_VIDEO)
-                    {
-                        ffp_toggle_buffering(ffp, 1);
-                    }
-                }
-                else
-                {
-                    if (q->is_buffer_indicator)
-                    {
-                        ffp_toggle_buffering(ffp, 1);
-                    }
-                }
-            }
+        else if (new_packet == 0) {
+            if (q->is_buffer_indicator && !*finished)
+                ffp_toggle_buffering(ffp, 1);
             new_packet = packet_queue_get(q, pkt, 1, serial);
             if (new_packet < 0)
                 return -1;
@@ -636,7 +701,7 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                 av_packet_move_ref(&pkt, &d->pkt);
                 d->packet_pending = 0;
             } else {
-                if (packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished, mediatype) < 0)
+                if (packet_queue_get_or_buffering(ffp, d->queue, &pkt, &d->pkt_serial, &d->finished) < 0)
                     return -1;
             }
         } while (d->queue->serial != d->pkt_serial);
@@ -760,12 +825,12 @@ static Frame *frame_queue_peek_readable(FrameQueue *f)
     /* wait until we have a readable a new frame */
     SDL_LockMutex(f->mutex);
     while (f->size - f->rindex_shown <= 0 &&
-           !f->pktq->abort_request) {
-        SDL_CondWait(f->cond, f->mutex);
+           !f->pktq->abort_request && !f->pktq->work_background && !f->pktq->recv_eof) {
+        SDL_CondWaitTimeout(f->cond, f->mutex, 100);
     }
     SDL_UnlockMutex(f->mutex);
 
-    if (f->pktq->abort_request)
+    if (f->pktq->abort_request || f->pktq->work_background || f->pktq->recv_eof)
         return NULL;
 
     return &f->queue[(f->rindex + f->rindex_shown) % f->max_size];
@@ -814,13 +879,20 @@ static int64_t frame_queue_last_pos(FrameQueue *f)
 }
 #endif
 
-static void decoder_abort(Decoder *d, FrameQueue *fq)
+static void decoder_abort(Decoder *d, FrameQueue *fq,  int abort_request)
 {
     packet_queue_abort(d->queue);
     frame_queue_signal(fq);
     SDL_WaitThread(d->decoder_tid, NULL);
     d->decoder_tid = NULL;
-    packet_queue_flush(d->queue);
+    if(d->queue->media_type != AVMEDIA_TYPE_AUDIO) {
+        packet_queue_flush(d->queue);
+    } else {
+        // reactivate background audio queue to receive subsequent data when playing is continue
+        if(!abort_request) {
+            packet_queue_set_backgroud(d->queue);
+        }
+    }
 }
 
 // FFP_MERGE: fill_rectangle
@@ -960,7 +1032,15 @@ static void stream_component_close(FFPlayer *ffp, int stream_index)
 
     switch (codecpar->codec_type) {
     case AVMEDIA_TYPE_AUDIO:
-        decoder_abort(&is->auddec, &is->sampq);
+        decoder_abort(&is->auddec, &is->sampq, ffp->is->abort_request);
+        // reset sampq
+        if (stream_index == is->audio_stream) {
+            SDL_LockMutex(is->sampq.mutex);
+            is->sampq.rindex = 0;
+            is->sampq.windex = 0;
+            is->sampq.size = 0;
+            SDL_UnlockMutex(is->sampq.mutex);
+        }
         SDL_AoutCloseAudio(ffp->aout);
 
         decoder_destroy(&is->auddec);
@@ -979,18 +1059,20 @@ static void stream_component_close(FFPlayer *ffp, int stream_index)
 #endif
         break;
     case AVMEDIA_TYPE_VIDEO:
-        decoder_abort(&is->viddec, &is->pictq);
+        decoder_abort(&is->viddec, &is->pictq, ffp->is->abort_request);
         decoder_destroy(&is->viddec);
         break;
     case AVMEDIA_TYPE_SUBTITLE:
-        decoder_abort(&is->subdec, &is->subpq);
+        decoder_abort(&is->subdec, &is->subpq, ffp->is->abort_request);
         decoder_destroy(&is->subdec);
         break;
     default:
         break;
     }
 
-    ic->streams[stream_index]->discard = AVDISCARD_ALL;
+    if(ic->streams[stream_index]->codecpar->codec_type != AVMEDIA_TYPE_AUDIO) {
+        ic->streams[stream_index]->discard = AVDISCARD_ALL;
+    }
     switch (codecpar->codec_type) {
     case AVMEDIA_TYPE_AUDIO:
         is->audio_st = NULL;
@@ -1015,7 +1097,10 @@ static void stream_close(FFPlayer *ffp)
     /* XXX: use a special url_shutdown call to abort parse cleanly */
     is->abort_request = 1;
     packet_queue_abort(&is->videoq);
-    packet_queue_abort(&is->audioq);
+    for (int i = 0; i < is->audio_stream_count;i++) {
+        PacketQueue* q = &(is->audioQues[i]);
+        packet_queue_abort(q);
+    }
     av_log(NULL, AV_LOG_DEBUG, "wait for read_tid\n");
     SDL_WaitThread(is->read_tid, NULL);
 
@@ -1033,7 +1118,11 @@ static void stream_close(FFPlayer *ffp)
     SDL_WaitThread(is->video_refresh_tid, NULL);
 
     packet_queue_destroy(&is->videoq);
-    packet_queue_destroy(&is->audioq);
+    for (int i = 0; i<is->audio_stream_count;i++) {
+        PacketQueue* q = &(is->audioQues[i]);
+        packet_queue_destroy(q);
+        is->audioq = NULL;
+    }
     packet_queue_destroy(&is->subtitleq);
 
     /* free all pictures */
@@ -1170,10 +1259,10 @@ static double get_master_clock(VideoState *is)
 
 static void check_external_clock_speed(VideoState *is) {
    if ((is->video_stream >= 0 && is->videoq.nb_packets <= EXTERNAL_CLOCK_MIN_FRAMES) ||
-       (is->audio_stream >= 0 && is->audioq.nb_packets <= EXTERNAL_CLOCK_MIN_FRAMES)) {
+       (is->audio_stream >= 0 && is->audioq->nb_packets <= EXTERNAL_CLOCK_MIN_FRAMES)) {
        set_clock_speed(&is->extclk, FFMAX(EXTERNAL_CLOCK_SPEED_MIN, is->extclk.speed - EXTERNAL_CLOCK_SPEED_STEP));
    } else if ((is->video_stream < 0 || is->videoq.nb_packets > EXTERNAL_CLOCK_MAX_FRAMES) &&
-              (is->audio_stream < 0 || is->audioq.nb_packets > EXTERNAL_CLOCK_MAX_FRAMES)) {
+              (is->audio_stream < 0 || is->audioq->nb_packets > EXTERNAL_CLOCK_MAX_FRAMES)) {
        set_clock_speed(&is->extclk, FFMIN(EXTERNAL_CLOCK_SPEED_MAX, is->extclk.speed + EXTERNAL_CLOCK_SPEED_STEP));
    } else {
        double speed = is->extclk.speed;
@@ -1444,7 +1533,7 @@ display:
             vqsize = 0;
             sqsize = 0;
             if (is->audio_st)
-                aqsize = is->audioq.size;
+                aqsize = is->audioq->size;
             if (is->video_st)
                 vqsize = is->videoq.size;
 #ifdef FFP_MERGE
@@ -2161,7 +2250,7 @@ static int audio_thread(void *arg)
                 frame_queue_push(&is->sampq);
 
 #if CONFIG_AVFILTER
-                if (is->audioq.serial != is->auddec.pkt_serial)
+                if (is->audioq->serial != is->auddec.pkt_serial)
                     break;
             }
             if (ret == AVERROR_EOF)
@@ -2512,7 +2601,7 @@ reload:
         if (!(af = frame_queue_peek_readable(&is->sampq)))
             return -1;
         frame_queue_next(&is->sampq);
-    } while (af->serial != is->audioq.serial);
+    } while (af->serial != is->audioq->serial);
 
     data_size = av_samples_get_buffer_size(NULL, af->frame->channels,
                                            af->frame->nb_samples,
@@ -2685,7 +2774,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
            }
            is->audio_buf_index = 0;
         }
-        if (is->auddec.pkt_serial != is->audioq.serial) {
+        if (is->auddec.pkt_serial != is->audioq->serial) {
             is->audio_buf_index = is->audio_buf_size;
             memset(stream, 0, len);
             // stream += len;
@@ -2949,7 +3038,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         is->audio_stream = stream_index;
         is->audio_st = ic->streams[stream_index];
 
-        decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread);
+        decoder_init(&is->auddec, avctx, is->audioq, is->continue_read_thread);
         if ((is->ic->iformat->flags & (AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) && !is->ic->iformat->read_seek) {
             is->auddec.start_pts = is->audio_st->start_time;
             is->auddec.start_pts_tb = is->audio_st->time_base;
@@ -3073,6 +3162,21 @@ static int is_realtime(AVFormatContext *s)
     return 0;
 }
 
+int set_active_audio_track(FFPlayer *ffp, int stream_index)
+{
+    int i = 0;
+    int got_track = 0;
+    for(; i<ffp->is->audio_stream_count;i++ ) {
+        if (stream_index == ffp->is->audioQues[i].stream_idx) {
+            got_track = 1;
+            break;
+        }
+    }
+    i = got_track ? i : 0;
+    ffp->is->audioq = &(ffp->is->audioQues[i]);
+    ffp->is->sampq.pktq = ffp->is->audioq;
+    return ffp->is->audioq->stream_idx;
+}
 /* this thread gets the stream from the disk or the network */
 static int read_thread(void *arg)
 {
@@ -3241,7 +3345,8 @@ static int read_thread(void *arg)
     for (i = 0; i < ic->nb_streams; i++) {
         AVStream *st = ic->streams[i];
         enum AVMediaType type = st->codecpar->codec_type;
-        st->discard = AVDISCARD_ALL;
+        // don't discard data of non-active stream
+        //st->discard = AVDISCARD_ALL;
         if (type >= 0 && ffp->wanted_stream_spec[type] && st_index[type] == -1)
             if (avformat_match_stream_specifier(ic, st, ffp->wanted_stream_spec[type]) > 0)
                 st_index[type] = i;
@@ -3256,6 +3361,15 @@ static int read_thread(void *arg)
                 if (first_h264_stream < 0)
                     first_h264_stream = i;
             }
+        } else if (type == AVMEDIA_TYPE_AUDIO) {
+            // limit to max support audio streams
+            if (is->audio_stream_count >= MAX_AUDIO_TRACK) {
+                continue;
+            }
+            is->audioQues[is->audio_stream_count].stream_idx = st->index;
+            is->audioQues[is->audio_stream_count].time_base = st->time_base;
+            is->audioQues[is->audio_stream_count].start_pts = st->start_time;
+            is->audio_stream_count++;
         }
     }
     if (video_stream_count > 1 && st_index[AVMEDIA_TYPE_VIDEO] < 0) {
@@ -3292,9 +3406,15 @@ static int read_thread(void *arg)
     }
 #endif
 
+    set_active_audio_track(ffp, st_index[AVMEDIA_TYPE_AUDIO]);
     /* open the streams */
     if (st_index[AVMEDIA_TYPE_AUDIO] >= 0) {
         stream_component_open(ffp, st_index[AVMEDIA_TYPE_AUDIO]);
+        for(int i = 0;i<is->audio_stream_count;i++) {
+            PacketQueue *q = &(ffp->is->audioQues[i]);
+            // assure audio thread work normally
+            q->serial++;
+        }
     } else {
         ffp->av_sync_type = AV_SYNC_VIDEO_MASTER;
         is->av_sync_type  = ffp->av_sync_type;
@@ -3303,6 +3423,10 @@ static int read_thread(void *arg)
     ret = -1;
     if (st_index[AVMEDIA_TYPE_VIDEO] >= 0) {
         ret = stream_component_open(ffp, st_index[AVMEDIA_TYPE_VIDEO]);
+        if (ret < 0) {
+            ret = -1;
+            goto fail;
+        }
     }
     if (is->show_mode == SHOW_MODE_NONE)
         is->show_mode = ret >= 0 ? SHOW_MODE_VIDEO : SHOW_MODE_RDFT;
@@ -3330,10 +3454,10 @@ static int read_thread(void *arg)
         ret = -1;
         goto fail;
     }
-    if (is->audio_stream >= 0) {
-        is->audioq.is_buffer_indicator = 1;
-        is->buffer_indicator_queue = &is->audioq;
-    } else if (is->video_stream >= 0) {
+    if (is->audio_stream >= 0 && ffp->av_sync_type == AV_SYNC_AUDIO_MASTER) {
+        is->audioq->is_buffer_indicator = 1;
+        is->buffer_indicator_queue = is->audioq;
+    } else if (is->video_stream >= 0 && ffp->av_sync_type == AV_SYNC_VIDEO_MASTER) {
         is->videoq.is_buffer_indicator = 1;
         is->buffer_indicator_queue = &is->videoq;
     } else {
@@ -3404,9 +3528,8 @@ static int read_thread(void *arg)
                        "%s: error while seeking\n", is->ic->filename);
             } else {
                 if (is->audio_stream >= 0) {
-                    packet_queue_flush(&is->audioq);
-                    packet_queue_put(&is->audioq, &flush_pkt);
-                    // TODO: clear invaild audio data
+                    packet_queue_flush(is->audioq);
+                    packet_queue_put(is->audioq, &flush_pkt);
                     // SDL_AoutFlushAudio(ffp->aout);
                 }
                 if (is->subtitle_stream >= 0) {
@@ -3427,7 +3550,7 @@ static int read_thread(void *arg)
                 }
 
                 is->latest_video_seek_load_serial = is->videoq.serial;
-                is->latest_audio_seek_load_serial = is->audioq.serial;
+                is->latest_audio_seek_load_serial = is->audioq->serial;
                 is->latest_seek_load_start_at = av_gettime();
             }
             ffp->dcc.current_high_water_mark_in_ms = ffp->dcc.first_high_water_mark_in_ms;
@@ -3483,11 +3606,11 @@ static int read_thread(void *arg)
         /* if the queue are full, no need to read more */
         if (ffp->infinite_buffer<1 && !is->seek_req &&
 #ifdef FFP_MERGE
-              (is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE
+              (is->audioq->size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE
 #else
-              (is->audioq.size + is->videoq.size + is->subtitleq.size > ffp->dcc.max_buffer_size
+              (is->audioq->size + is->videoq.size + is->subtitleq.size > ffp->dcc.max_buffer_size
 #endif
-            || (   stream_has_enough_packets(is->audio_st, is->audio_stream, &is->audioq, MIN_FRAMES)
+            || (   stream_has_enough_packets(is->audio_st, is->audio_stream, is->audioq, MIN_FRAMES)
                 && stream_has_enough_packets(is->video_st, is->video_stream, &is->videoq, MIN_FRAMES)
                 && stream_has_enough_packets(is->subtitle_st, is->subtitle_stream, &is->subtitleq, MIN_FRAMES)))) {
             if (!is->eof) {
@@ -3500,7 +3623,7 @@ static int read_thread(void *arg)
             continue;
         }
         if ((!is->paused || completed) &&
-            (!is->audio_st || (is->auddec.finished == is->audioq.serial && frame_queue_nb_remaining(&is->sampq) == 0)) &&
+            (!is->audio_st || (is->auddec.finished == is->audioq->serial && frame_queue_nb_remaining(&is->sampq) == 0)) &&
             (!is->video_st || (is->viddec.finished == is->videoq.serial && frame_queue_nb_remaining(&is->pictq) == 0))) {
             if (ffp->loop != 1 && (!ffp->loop || --ffp->loop)) {
                 stream_seek(is, ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0, 0, 0);
@@ -3574,7 +3697,7 @@ static int read_thread(void *arg)
                 if (is->video_stream >= 0)
                     packet_queue_put_nullpacket(&is->videoq, is->video_stream);
                 if (is->audio_stream >= 0)
-                    packet_queue_put_nullpacket(&is->audioq, is->audio_stream);
+                    packet_queue_put_nullpacket(is->audioq, is->audio_stream);
                 if (is->subtitle_stream >= 0)
                     packet_queue_put_nullpacket(&is->subtitleq, is->subtitle_stream);
                 is->eof = 1;
@@ -3583,7 +3706,7 @@ static int read_thread(void *arg)
                 if (is->video_stream >= 0)
                     packet_queue_put_nullpacket(&is->videoq, is->video_stream);
                 if (is->audio_stream >= 0)
-                    packet_queue_put_nullpacket(&is->audioq, is->audio_stream);
+                    packet_queue_put_nullpacket(is->audioq, is->audio_stream);
                 if (is->subtitle_stream >= 0)
                     packet_queue_put_nullpacket(&is->subtitleq, is->subtitle_stream);
                 is->eof = 1;
@@ -3604,11 +3727,12 @@ static int read_thread(void *arg)
             continue;
         } else {
             is->eof = 0;
+            sync_multi_audiotrack(ffp);
         }
 
         if (pkt->flags & AV_PKT_FLAG_DISCONTINUITY) {
             if (is->audio_stream >= 0) {
-                packet_queue_put(&is->audioq, &flush_pkt);
+                packet_queue_put(is->audioq, &flush_pkt);
             }
             if (is->subtitle_stream >= 0) {
                 packet_queue_put(&is->subtitleq, &flush_pkt);
@@ -3626,8 +3750,17 @@ static int read_thread(void *arg)
                 av_q2d(ic->streams[pkt->stream_index]->time_base) -
                 (double)(ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0) / 1000000
                 <= ((double)ffp->duration / 1000000);
-        if (pkt->stream_index == is->audio_stream && pkt_in_play_range) {
-            packet_queue_put(&is->audioq, pkt);
+        if (ic->streams[pkt->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && pkt_in_play_range) {
+            PacketQueue *audioq = NULL;
+            for (int i = 0 ; i < is->audio_stream_count;i++) {
+                if(ffp->is->audioQues[i].stream_idx == pkt->stream_index) {
+                    audioq = &ffp->is->audioQues[i];
+                    break;
+                }
+            }
+            if (audioq) {
+                packet_queue_put(audioq, pkt);
+            }
         } else if (pkt->stream_index == is->video_stream && pkt_in_play_range
                    && !(is->video_st && (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))) {
             packet_queue_put(&is->videoq, pkt);
@@ -3682,6 +3815,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     VideoState *is;
 
     is = av_mallocz(sizeof(VideoState));
+    is->audioq = &is->audioQues[0];
     if (!is)
         return NULL;
     is->filename = av_strdup(filename);
@@ -3701,13 +3835,19 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
         goto fail;
     if (frame_queue_init(&is->subpq, &is->subtitleq, SUBPICTURE_QUEUE_SIZE, 0) < 0)
         goto fail;
-    if (frame_queue_init(&is->sampq, &is->audioq, SAMPLE_QUEUE_SIZE, 1) < 0)
+    if (frame_queue_init(&is->sampq, is->audioq, SAMPLE_QUEUE_SIZE, 1) < 0)
         goto fail;
 
     if (packet_queue_init(&is->videoq) < 0 ||
-        packet_queue_init(&is->audioq) < 0 ||
         packet_queue_init(&is->subtitleq) < 0)
         goto fail;
+    for( int i = 0; i<MAX_AUDIO_TRACK; i++) {
+        if(packet_queue_init(&is->audioQues[i]) < 0) {
+            goto fail;
+        }
+        is->audioQues[i].abort_request = 0;
+        is->audioQues[i].media_type = AVMEDIA_TYPE_AUDIO;
+    }
 
     if (!(is->continue_read_thread = SDL_CreateCond())) {
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateCond(): %s\n", SDL_GetError());
@@ -3725,7 +3865,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
     }
 
     init_clock(&is->vidclk, &is->videoq.serial);
-    init_clock(&is->audclk, &is->audioq.serial);
+    init_clock(&is->audclk, &is->audioq->serial);
     init_clock(&is->extclk, &is->extclk.serial);
     is->audio_clock_serial = -1;
     if (ffp->startup_volume < 0)
@@ -4570,9 +4710,9 @@ int ffp_packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *serial)
     return packet_queue_get(q, pkt, block, serial);
 }
 
-int ffp_packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished, int mediatype)
+int ffp_packet_queue_get_or_buffering(FFPlayer *ffp, PacketQueue *q, AVPacket *pkt, int *serial, int *finished)
 {
-    return packet_queue_get_or_buffering(ffp, q, pkt, serial, finished, mediatype);
+    return packet_queue_get_or_buffering(ffp, q, pkt, serial, finished);
 }
 
 int ffp_packet_queue_put(PacketQueue *q, AVPacket *pkt)
@@ -4666,7 +4806,7 @@ void ffp_track_statistic_l(FFPlayer *ffp, AVStream *st, PacketQueue *q, FFTrackC
 void ffp_audio_statistic_l(FFPlayer *ffp)
 {
     VideoState *is = ffp->is;
-    ffp_track_statistic_l(ffp, is->audio_st, &is->audioq, &ffp->stat.audio_cache);
+    ffp_track_statistic_l(ffp, is->audio_st, is->audioq, &ffp->stat.audio_cache);
 }
 
 void ffp_video_statistic_l(FFPlayer *ffp)
@@ -4709,8 +4849,8 @@ void ffp_check_buffering_l(FFPlayer *ffp)
             int audio_cached_percent = (int)av_rescale(audio_cached_duration, 1005, hwm_in_ms * 10);
             av_log(ffp, AV_LOG_DEBUG, "audio cache=%%%d milli:(%d/%d) bytes:(%d/%d) packet:(%d/%d)\n", audio_cached_percent,
                   (int)audio_cached_duration, hwm_in_ms,
-                  is->audioq.size, hwm_in_bytes,
-                  is->audioq.nb_packets, MIN_FRAMES);
+                  is->audioq->size, hwm_in_bytes,
+                  is->audioq->nb_packets, MIN_FRAMES);
 #endif
         }
 
@@ -4747,7 +4887,7 @@ void ffp_check_buffering_l(FFPlayer *ffp)
         }
     }
 
-    int cached_size = is->audioq.size + is->videoq.size;
+    int cached_size = is->audioq->size + is->videoq.size;
     if (hwm_in_bytes > 0) {
         buf_size_percent = (int)av_rescale(cached_size, 1005, hwm_in_bytes * 10);
 #ifdef FFP_SHOW_DEMUX_CACHE
@@ -4797,7 +4937,7 @@ void ffp_check_buffering_l(FFPlayer *ffp)
         ffp->dcc.current_high_water_mark_in_ms = hwm_in_ms;
 
         if (is->buffer_indicator_queue && is->buffer_indicator_queue->nb_packets > 0) {
-            if (   (is->audioq.nb_packets >= MIN_MIN_FRAMES || is->audio_stream < 0 || is->audioq.abort_request)
+            if (   (is->audioq->nb_packets >= MIN_MIN_FRAMES || is->audio_stream < 0 || is->audioq->abort_request)
                 && (is->videoq.nb_packets >= MIN_MIN_FRAMES || is->video_stream < 0 || is->videoq.abort_request)) {
                 ffp_toggle_buffering(ffp, 0);
             }
@@ -4899,8 +5039,14 @@ int ffp_set_stream_selected(FFPlayer *ffp, int stream, int selected)
                     stream_component_close(ffp, is->video_stream);
                 break;
             case AVMEDIA_TYPE_AUDIO:
-                if (stream != is->audio_stream && is->audio_stream >= 0)
+                if (stream == is->audio_stream) {
+                    return 0;
+                }
+                if (stream != is->audio_stream && is->audio_stream >= 0) {
                     stream_component_close(ffp, is->audio_stream);
+                    // change the target stream index
+                    stream = set_active_audio_track(ffp, stream);
+                }
                 break;
             case AVMEDIA_TYPE_SUBTITLE:
                 if (stream != is->subtitle_stream && is->subtitle_stream >= 0)

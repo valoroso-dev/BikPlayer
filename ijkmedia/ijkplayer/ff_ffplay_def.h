@@ -179,6 +179,13 @@ typedef struct PacketQueue {
     int alloc_count;
 
     int is_buffer_indicator;
+    int total_packets;
+    int stream_idx;
+    int media_type;
+    AVRational time_base;
+    int64_t start_pts;
+    int recv_eof;
+    int work_background;
 } PacketQueue;
 
 // #define VIDEO_PICTURE_QUEUE_SIZE 3
@@ -190,6 +197,8 @@ typedef struct PacketQueue {
 #define FRAME_QUEUE_SIZE FFMAX(SAMPLE_QUEUE_SIZE, FFMAX(VIDEO_PICTURE_QUEUE_SIZE_MAX, SUBPICTURE_QUEUE_SIZE))
 
 #define VIDEO_MAX_FPS_DEFAULT 30
+#define MAX_AUDIO_TRACK 8
+#define INVALID_STREAM_INDEX -1
 
 typedef struct AudioParams {
     int freq;
@@ -316,7 +325,9 @@ typedef struct VideoState {
     double audio_diff_threshold;
     int audio_diff_avg_count;
     AVStream *audio_st;
-    PacketQueue audioq;
+    PacketQueue *audioq;
+    PacketQueue audioQues[MAX_AUDIO_TRACK];
+    int audio_stream_count;
     int audio_hw_buf_size;
     uint8_t *audio_buf;
     uint8_t *audio_buf1;
