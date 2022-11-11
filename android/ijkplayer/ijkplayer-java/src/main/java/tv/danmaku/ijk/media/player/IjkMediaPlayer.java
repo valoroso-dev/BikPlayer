@@ -514,7 +514,18 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void prepareAsync() throws IllegalStateException {
-        _prepareAsync();
+        // reset log level to debug
+        if (Log.isLoggable("IJKPDEBUG", Log.VERBOSE)) {
+             Log.v("IJKPDEBUG", "force change ijk player log level to verbose!");
+             native_setLogLevel(IjkMediaPlayer.IJK_LOG_VERBOSE);
+         } else if (Log.isLoggable("IJKPDEBUG", Log.DEBUG)) {
+             Log.d("IJKPDEBUG", "force change ijk player log level to debug!");
+             native_setLogLevel(IjkMediaPlayer.IJK_LOG_DEBUG);
+         } else if (Log.isLoggable("IJKPDEBUG", Log.INFO)) {
+             Log.i("IJKPDEBUG", "force change ijk player log level to info!");
+             native_setLogLevel(IjkMediaPlayer.IJK_LOG_INFO);
+         }
+	  _prepareAsync();
     }
 
     public native void _prepareAsync() throws IllegalStateException;
