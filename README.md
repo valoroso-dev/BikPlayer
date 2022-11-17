@@ -1,7 +1,5 @@
 # BikPlayer
- About
- -------
-BikPlayer is an open source video player based on bilibili's [ijkplayer](https://github.com/bilibili/ijkplayer), which support Android and iOS, with MediaCodec/VideoToolbox support for hardware acceleration.
+BikPlayer is an open source video player based on bilibili's [ijkplayer](https://github.com/bilibili/ijkplayer), which support Android and iOS, with MediaCodec/VideoToolbox support for hardware acceleration. Not only does it occupy low resources, but it also supports a full range of file formats, compatible with almost all audio and video formats, and also supports DRM content, with quite complete functions. It supports a variety of hardware and provides a good experience on both mobile phones and set-top boxes. Bikplayer also provides replaceable back-end players to facilitate personalized playback experience. A sample is provided for reference, which can be easily integrated into your own product.
 
 ### Features
 - Android 
@@ -31,12 +29,15 @@ BikPlayer is an open source video player based on bilibili's [ijkplayer](https:/
 
 
 ### Try Android Demo
--  [Android Apk](https://raw.githubusercontent.com/valoroso-dev/BikPlayer/master/demo/ijkplayer-example.apk)
+-  [Android Apk](https://github.com/valoroso-dev/BikPlayer/blob/master/demo/BikPlayer.apk)
 
 ![android demo](doc/android_demo.png)
 
 ### Next Plan
 - update FFmpeg to latest version
+- support subtitle
+- support playbak speed from 1/8 ~ 2 times of normal speed
+- support adr
 - improve documentation for this player
 - regular releases on a quarterly basis, and provide unscheduled releases if there are major changes or updates
 
