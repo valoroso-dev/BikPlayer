@@ -1,0 +1,34 @@
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="@dimen/ijk_horizontal_margin"
+    android:paddingTop="0dp"
+    android:paddingRight="@dimen/ijk_horizontal_margin"
+    android:paddingBottom="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/path_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="please input media url here"
+            android:imeOptions="actionDone|actionSend"
+            android:inputType="textUri"
+            android:lines="1"
+            android:singleLine="true" />
+
+        <tv.danmaku.ijk.media.example.fragments.MyListView
+            android:id="@+id/file_list_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:choiceMode="singleChoice"
+            tools:context=".file_list_view" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

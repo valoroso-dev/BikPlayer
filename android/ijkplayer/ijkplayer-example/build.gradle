@@ -16,7 +16,7 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     defaultConfig {
-        applicationId "tv.danmaku.ijk.media.example"
+        applicationId "com.valoroso.BikPlayer"
         minSdkVersion 9
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode rootProject.ext.versionCode
@@ -26,6 +26,16 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    android.applicationVariants.all { variant ->
+        variant.outputs.all {
+            if (variant.name == "debug") {
+                outputFileName = "BikPlayer.apk"
+            } else {
+                outputFileName = "BikPlayer.apk"
+            }
+            println outputFileName;
         }
     }
     productFlavors {

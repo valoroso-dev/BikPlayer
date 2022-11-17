@@ -332,10 +332,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         am.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
 
         try {
-            mMediaPlayer = createPlayer(playertype);
-            //mMediaPlayer = createPlayer(Settings.PV_PLAYER__IjkMediaPlayer);
-            //mMediaPlayer = createPlayer(Settings.PV_PLAYER__IjkMediaPlayer);
-            Log.d(TAG, "after create player is " + mMediaPlayer);
+            mMediaPlayer = createPlayer(mSettings.getPlayer());
             // TODO: create SubtitleController in MediaPlayer, but we need
             // a context for the subtitle renderers
             final Context context = getContext();
@@ -606,15 +603,15 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
                         } else {
                             messageId = R.string.VideoView_error_text_unknown;
                         }
-
+                        /*
                         new AlertDialog.Builder(getContext())
                                 .setMessage(messageId)
                                 .setPositiveButton(R.string.VideoView_error_button,
                                         new DialogInterface.OnClickListener() {
                                             public void onClick(DialogInterface dialog, int whichButton) {
-                                            /* If we get here, there is no onError listener, so
-                                             * at least inform them that the video is over.
-                                             */
+                                            // If we get here, there is no onError listener, so
+                                            //  at least inform them that the video is over.
+                                             
                                                 if (mOnCompletionListener != null) {
                                                     mOnCompletionListener.onCompletion(mMediaPlayer);
                                                 }
@@ -622,6 +619,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
                                         })
                                 .setCancelable(false)
                                 .show();
+                        */
                     }
                     return true;
                 }

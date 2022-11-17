@@ -23,18 +23,23 @@ import android.os.Bundle;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import tv.danmaku.ijk.media.example.R;
 import tv.danmaku.ijk.media.example.activities.VideoActivity;
 
 public class SampleMediaListFragment extends Fragment {
+    private EditText mPathView;
     private ListView mFileListView;
     private SampleMediaAdapter mAdapter;
 
@@ -46,7 +51,8 @@ public class SampleMediaListFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        ViewGroup viewGroup = (ViewGroup) inflater.inflate(R.layout.fragment_file_list, container, false);
+        ViewGroup viewGroup = (ViewGroup) inflater.inflate(R.layout.fragment_sample_file_list, container, false);
+        mPathView = viewGroup.findViewById(R.id.path_view);
         mFileListView = (ListView) viewGroup.findViewById(R.id.file_list_view);
         return viewGroup;
     }
@@ -56,6 +62,22 @@ public class SampleMediaListFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
 
         final Activity activity = getActivity();
+
+        mPathView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+//                if (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
+//                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+//                        Toast.makeText(getContext(), "ok", Toast.LENGTH_SHORT).show();
+//                        return true;
+//                    }
+//                }
+                String name = "";//todo
+                String url = mPathView.getText().toString();
+                VideoActivity.intentTo(activity, url, name);
+                return false;
+            }
+        });
 
         mAdapter = new SampleMediaAdapter(activity);
         mFileListView.setAdapter(mAdapter);
@@ -130,7 +152,7 @@ public class SampleMediaListFragment extends Fragment {
                 "    ]\n" +
                 "}";
 
-        mAdapter.addItem(manifest_string, "las test");
+        //mAdapter.addItem(manifest_string, "las test");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8", "bipbop basic master playlist");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear1/prog_index.m3u8", "bipbop basic 400x300 @ 232 kbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8", "bipbop basic 640x480 @ 650 kbps");
