@@ -46,7 +46,7 @@ We used ijkplayer in our products several years ago, and of course, we encounter
 - Support subtitle
 - Support playback speed from 1/8 ~ 2 times of normal speed
 - Support ADR
-- Sooner we will have the first release, expected in February 2023
+- Sooner we will have the next release, expected in the Q1 2023
 
 ### Support
 - Welcome to submit issue for discussion and we will respond ASAP.  It will be very helpful to solve the problem by providing the scene where the problem occurs, the phenomenon, the operation method and the media file or url used in the test.
