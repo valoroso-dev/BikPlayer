@@ -1,7 +1,7 @@
 # BikPlayer
 BikPlayer, derived from bilibili's [ijkplayer](https://github.com/bilibili/ijkplayer) open source project, provide more outstanding features and continuous issue & technical support.
 BikPlayer provide perfect performance both in Android and iOS platform, support hardware decoding using with MediaCodec (Android) /VideoToolbox(iOS), help to achieve perfect performance in varieties of hardware include mobile phones and STBs.
-BikPlayer support big range of media file formats, include almost all existing audio and video formats; As alternative option, BikPlayer support replaceable back-end players, include native player or Exo, or BikPlayer to adapt different application scenarios.
+BikPlayer support big range of media file formats, include almost all existing audio and video formats; As alternative option, BikPlayer support replaceable back-end players, include native player or Exo, or BikPlayer to adapt different application scenarios.  
 One big improvement in BikPlayer is quick-to-play supporting. In lab testing, BikPlayer can be nearly two-times faster compared with other traditional player.
 You can experience quick-to-play, media file formats support by the demo APK provided later, and check how to integrate it with your own product.
 
