@@ -47,8 +47,8 @@ sudo dpkg-reconfigure dash
 
 ### Build iOS
 ```
-git clone https://github.com/valoroso-dev/BikPlayer.git ijkplayer-ios
-cd ijkplayer-ios
+git clone https://github.com/valoroso-dev/BikPlayer.git bikplayer-ios
+cd bikplayer-ios
 git checkout -B latest k0.8.8
 
 ./init-ios.sh

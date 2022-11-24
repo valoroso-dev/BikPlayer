@@ -55,8 +55,8 @@ sudo dpkg-reconfigure bash
 
 ### Build
 ```
-git clone https://github.com/valoroso-dev/BikPlayer.git ijkplayer-android
-cd ijkplayer-android
+git clone https://github.com/valoroso-dev/BikPlayer.git bikplayer-android
+cd bikplayer-android
 
 # init the code
 ./init-android.sh
@@ -70,7 +70,7 @@ cd ..
 
 #
 # Gradle
-#     cd ijkplayer
+#     cd bikplayer
 #     gradle
 
 ```
