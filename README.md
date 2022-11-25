@@ -1,7 +1,7 @@
 # BikPlayer
-BikPlayer is a cross-platform media player, provide perfect performance both in Android and iOS platform, support hardware decoding using with MediaCodec (Android) /VideoToolbox(iOS), help to achieve perfect performance in varieties of hardware include mobile phones and STBs.  
+BikPlayer is a cross-platform media player, provide perfect performance both in Android and iOS platform, support hardware decoding using MediaCodec (Android) /VideoToolbox(iOS), help to achieve perfect performance in varieties of hardware include mobile phones and STBs.  
 BikPlayer support big range of media file formats, include almost all existing audio and video formats; As alternative option, BikPlayer support replaceable back-end players, include native player or Exo, or BikPlayer to adapt different application scenarios.  
-One big improvement in BikPlayer is quick-to-play supporting which can help user experience improvement; In lab testing, BikPlayer can be nearly two-times faster compared with other traditional player.  
+One big improvement in BikPlayer is quick-to-play supporting; In lab testing, BikPlayer is nearly two-times faster compared with other traditional player.  
 You can experience quick-to-play, media file formats support by the demo APK provided later, and check how to integrate it with your own product.
 
 ### Features
@@ -81,7 +81,5 @@ build scripts are based on or derives from projects below:
 - [yixia/FFmpeg-Android](https://github.com/yixia/FFmpeg-Android)
 - [kewlbear/FFmpeg-iOS-build-script](https://github.com/kewlbear/FFmpeg-iOS-build-script) 
 
-### Why this project
-We used ijkplayer in our products several years ago, and of course, we encountered many problems, some of them solved with support from open source project, but more solved by ourselves without external help, and we also developed some new features. 
-Now we want to share all these changes with more users, and continue supporting it to be more powerful and wide-used. This is the reason why BikPlayer appears, it is derived from bilibili's ijkplayer open source project, provide more outstanding features and continuous issue & technical support. 
-If you have any issues about this player, or suggestions, please contact us and discuss with us. :smiley: 
+### [Why this project}(doc/whythisproject.md)
+
