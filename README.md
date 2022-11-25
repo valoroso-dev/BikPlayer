@@ -81,5 +81,5 @@ build scripts are based on or derives from projects below:
 - [yixia/FFmpeg-Android](https://github.com/yixia/FFmpeg-Android)
 - [kewlbear/FFmpeg-iOS-build-script](https://github.com/kewlbear/FFmpeg-iOS-build-script) 
 
-### [Why this project}(doc/whythisproject.md)
-
+### Why this project
+[check here](doc/whythisproject.md)
