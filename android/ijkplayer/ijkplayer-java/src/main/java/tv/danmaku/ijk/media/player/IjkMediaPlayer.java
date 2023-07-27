@@ -27,6 +27,7 @@ import android.graphics.SurfaceTexture;
 import android.graphics.Rect;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
+import android.media.MediaCrypto;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -49,9 +50,15 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import tv.danmaku.ijk.media.common.drm.DrmConstant;
+import tv.danmaku.ijk.media.common.drm.DrmInitInfo;
+import tv.danmaku.ijk.media.common.drm.DrmInitInfoParser;
+import tv.danmaku.ijk.media.common.drm.DrmManager;
+import tv.danmaku.ijk.media.common.drm.OnDrmErrorListener;
 import tv.danmaku.ijk.media.player.annotations.AccessedByNative;
 import tv.danmaku.ijk.media.player.annotations.CalledByNative;
 import tv.danmaku.ijk.media.player.misc.IAndroidIO;
@@ -59,6 +66,8 @@ import tv.danmaku.ijk.media.player.misc.IMediaDataSource;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
 import tv.danmaku.ijk.media.player.pragma.DebugLog;
+
+import static tv.danmaku.ijk.media.common.drm.DrmConstant.DrmSessionState.STATE_UNKNOWN;
 
 /**
  * @author bbcallen
@@ -78,9 +87,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private static final int MEDIA_ERROR = 100;
     private static final int MEDIA_INFO = 200;
 
-    private static final int MEDIA_VIDEO_DECODER_OPEN_ERROR = 999;
+    public static final int MEDIA_VIDEO_DECODER_OPEN_ERROR = 999;
 
-    protected static final int MEDIA_SET_VIDEO_SAR = 10001;
+    public static final int MEDIA_SET_VIDEO_SAR = 10001;// arg1 = sar.num, arg2 = sar.den
+    public static final int MEDIA_NO_AUDIO_RECV = 10002;// haven't receive audio for a while
+    public static final int MEDIA_NO_VIDEO_RECV = 10003;// haven't receive video for a while
+    public static final int MEDIA_DRM_ERROR = 11001;
 
     //----------------------------------------
     // options
@@ -170,6 +182,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private int mVideoSarDen;
 
     private String mDataSource;
+    private String mVideoCodecName = "unknown";
+
+    private DrmManager mDrmManager;
 
     /**
      * Default library loader
@@ -314,6 +329,40 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         updateSurfaceScreenOn();
     }
 
+    @Override
+    public void setDrmInfo(int drmType, boolean multiSession, String licenseServerUrl, Map<String, String> headers, String reqMethod) {
+        Log.i(TAG, "setDrmInfo drmType=" + drmType + ",multiSession=" + multiSession + " " + licenseServerUrl + " "
+                + headers + " " + reqMethod + " " + Build.VERSION.SDK_INT);
+        super.setDrmInfo(drmType, multiSession, licenseServerUrl, headers, reqMethod);
+        if (drmType == DRM_TYPE_NULL) {
+            return;
+        } else if (drmType == DRM_TYPE_WIDEVINE) {
+            if (multiSession && Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
+                throw new IllegalArgumentException("only Android level 24 or above support multi session");
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                mDrmManager = new DrmManager.Factory().create(licenseServerUrl, headers, getDrmUUID(), multiSession);
+                if (mDrmManager instanceof DrmManager.DummyDrmManager) {
+                    Log.e(TAG, "it is not support drm because there is not valid DrmManager");
+                }
+                mDrmManager.setOnDrmErrorListener(new OnDrmErrorListener() {
+                    @Override
+                    public void onDrmError(int code, Exception e) {
+                        notifyOnError(MEDIA_DRM_ERROR, code);
+                    }
+                });
+            } else {
+                throw new IllegalArgumentException("only Android level 18 or above support drm");
+            }
+            setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "is-drm-source", 1);
+            setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "index-drm-first", multiSession ? 0 : 1);
+        } else if (drmType == DRM_TYPE_GOOSE) {
+
+        } else {
+            throw new IllegalArgumentException("not support drm type " + drmType);
+        }
+    }
+
     /**
      * Sets the data source as a content Uri.
      *
@@ -356,7 +405,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 throw new FileNotFoundException("Failed to resolve default ringtone");
             }
         }
-
+        /*
         AssetFileDescriptor fd = null;
         try {
             ContentResolver resolver = context.getContentResolver();
@@ -380,9 +429,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 fd.close();
             }
         }
-
+        
         Log.d(TAG, "Couldn't open file on client side, trying server side");
-
+        */
         setDataSource(uri.toString(), headers);
     }
 
@@ -514,18 +563,21 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void prepareAsync() throws IllegalStateException {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            if (mDrmManager != null) {
+                mDrmManager.prepare();
+            }
+
+        }
         // reset log level to debug
         if (Log.isLoggable("IJKPDEBUG", Log.VERBOSE)) {
-             Log.v("IJKPDEBUG", "force change ijk player log level to verbose!");
-             native_setLogLevel(IjkMediaPlayer.IJK_LOG_VERBOSE);
-         } else if (Log.isLoggable("IJKPDEBUG", Log.DEBUG)) {
-             Log.d("IJKPDEBUG", "force change ijk player log level to debug!");
-             native_setLogLevel(IjkMediaPlayer.IJK_LOG_DEBUG);
-         } else if (Log.isLoggable("IJKPDEBUG", Log.INFO)) {
-             Log.i("IJKPDEBUG", "force change ijk player log level to info!");
-             native_setLogLevel(IjkMediaPlayer.IJK_LOG_INFO);
-         }
-	  _prepareAsync();
+            Log.v("IJKPDEBUG", "force change ijk player log level to verbose!");
+            native_setLogLevel(IjkMediaPlayer.IJK_LOG_VERBOSE);
+        } else if (Log.isLoggable("IJKPDEBUG", Log.DEBUG)) {
+            Log.d("IJKPDEBUG", "force change ijk player log level to debug!");
+            native_setLogLevel(IjkMediaPlayer.IJK_LOG_DEBUG);
+        }
+        _prepareAsync();
     }
 
     public native void _prepareAsync() throws IllegalStateException;
@@ -660,9 +712,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     }
 
     @Override
-    public final void setTrack(int trackType, int trackId){}
+    public final void setTrack(int trackType, int trackId) {
+    }
+
     @Override
-    public final int getCurrentTrack(int trackType){return -1;}
+    public final int getCurrentTrack(int trackType) {
+        return -1;
+    }
+
     private native void _setStreamSelected(int stream, boolean select);
 
     @Override
@@ -719,6 +776,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         updateSurfaceScreenOn();
         resetListeners();
         _release();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            if (mDrmManager != null) {
+                mDrmManager.release();
+            }
+        }
     }
 
     private native void _release();
@@ -942,6 +1004,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return _getColorFormatName(mediaCodecColorFormat);
     }
 
+    public static String getVersion() {
+        return BuildConfig.VERSION_CODE;
+    }
+
     private static native String _getColorFormatName(int mediaCodecColorFormat);
 
     @Override
@@ -952,6 +1018,18 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     @Override
     public void setKeepInBackground(boolean keepInBackground) {
         // do nothing
+    }
+
+    @Override
+    public String getVideoCodecName() {
+        int codecType = getVideoDecoder();
+        switch (codecType) {
+            case IjkMediaPlayer.FFP_PROPV_DECODER_AVCODEC:
+                return "ffmpeg-avcodec";
+            case IjkMediaPlayer.FFP_PROPV_DECODER_MEDIACODEC:
+                return mVideoCodecName;
+        }
+        return super.getVideoCodecName();
     }
 
     private static native void native_init();
@@ -1041,12 +1119,20 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 return;
 
             case MEDIA_INFO:
+                String additionalInfo = "";
                 switch (msg.arg1) {
                     case MEDIA_INFO_VIDEO_RENDERING_START:
                         DebugLog.i(TAG, "Info: MEDIA_INFO_VIDEO_RENDERING_START\n");
                         break;
+                    case MEDIA_INFO_STREAM_FORMAT_SUMMARY:
+                    case MEDIA_INFO_BUFFERING_START:
+                    case MEDIA_INFO_BUFFERING_END:
+                    case MEDIA_INFO_STARTUP_INFO:
+                        additionalInfo = (msg.obj == null) ? additionalInfo : (String)msg.obj;
+                        DebugLog.i(TAG, "Info: (" + msg.arg1 + ")," + additionalInfo);
                 }
-                player.notifyOnInfo(msg.arg1, msg.arg2);
+
+                player.notifyOnInfo(msg.arg1, msg.arg2, additionalInfo);
                 // No real default action so far.
                 return;
             case MEDIA_TIMED_TEXT:
@@ -1230,7 +1316,71 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         if (listener == null)
             listener = DefaultMediaCodecSelector.sInstance;
 
-        return listener.onMediaCodecSelect(player, mimeType, profile, level);
+        player.mVideoCodecName = listener.onMediaCodecSelect(player, mimeType, profile, level);
+        return player.mVideoCodecName;
+    }
+
+    @CalledByNative
+    private static int onDrmInitInfoUpdated(Object weakThiz, String stringObj, byte[] bytesObj, int flag) {
+        if (weakThiz == null || !(weakThiz instanceof WeakReference<?>))
+            return STATE_UNKNOWN.ordinal();
+
+        @SuppressWarnings("unchecked")
+        WeakReference<IjkMediaPlayer> weakPlayer = (WeakReference<IjkMediaPlayer>) weakThiz;
+        IjkMediaPlayer player = weakPlayer.get();
+        if (player == null || player.mDrmManager == null)
+            return STATE_UNKNOWN.ordinal();
+
+        Log.i(TAG, "onDrmInitInfoUpdated = " + stringObj);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            List<DrmInitInfo> drmInitInfoList = DrmInitInfoParser.parse(stringObj);
+            DrmConstant.DrmSessionState minValue = DrmConstant.DrmSessionState.STATE_LOADED;
+            for (DrmInitInfo drmInitInfo : drmInitInfoList) {
+                DrmConstant.DrmSessionState state = player.mDrmManager.acquireSession(drmInitInfo, flag);
+                if (state.ordinal() < minValue.ordinal()) {
+                    minValue = state;
+                }
+            }
+            return minValue.ordinal();
+        }
+        return STATE_UNKNOWN.ordinal();
+    }
+
+    @CalledByNative
+    private static MediaCrypto getMediaCrypto(Object weakThiz, int type) {
+        if (weakThiz == null || !(weakThiz instanceof WeakReference<?>))
+            return null;
+
+        @SuppressWarnings("unchecked")
+        WeakReference<IjkMediaPlayer> weakPlayer = (WeakReference<IjkMediaPlayer>) weakThiz;
+        IjkMediaPlayer player = weakPlayer.get();
+        if (player == null || player.mDrmManager == null)
+            return null;
+
+        MediaCrypto mediaCrypto = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            mediaCrypto = player.mDrmManager.getMediaCrypto(type);
+        }
+        Log.i(TAG, "getMediaCrypto mediaCrypto = " + mediaCrypto + " for type " + type);
+        return mediaCrypto;
+    }
+
+    @CalledByNative
+    private static int getDrmSessionState(Object weakThiz, int type, int flag) {
+        if (weakThiz == null || !(weakThiz instanceof WeakReference<?>))
+            return STATE_UNKNOWN.ordinal();
+
+        @SuppressWarnings("unchecked")
+        WeakReference<IjkMediaPlayer> weakPlayer = (WeakReference<IjkMediaPlayer>) weakThiz;
+        IjkMediaPlayer player = weakPlayer.get();
+        if (player == null || player.mDrmManager == null)
+            return STATE_UNKNOWN.ordinal();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            DrmConstant.DrmSessionState state = player.mDrmManager.getDrmSessionState(type, flag);
+            return state.ordinal();
+        }
+        return STATE_UNKNOWN.ordinal();
     }
 
     public static class DefaultMediaCodecSelector implements OnMediaCodecSelectListener {
@@ -1273,6 +1423,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     candidateCodecList.add(candidate);
                     Log.i(TAG, String.format(Locale.US, "candidate codec: %s rank=%d", codecInfo.getName(), candidate.mRank));
                     candidate.dumpProfileLevels(mimeType);
+                    candidate.dumpCodecCapabilities(mimeType);
                 }
             }
 

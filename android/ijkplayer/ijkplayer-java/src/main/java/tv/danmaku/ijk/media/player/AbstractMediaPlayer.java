@@ -19,6 +19,7 @@ package tv.danmaku.ijk.media.player;
 
 import java.util.Map;
 import java.util.UUID;
+
 import tv.danmaku.ijk.media.player.misc.IMediaDataSource;
 
 @SuppressWarnings("WeakerAccess")
@@ -31,11 +32,15 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
     private OnErrorListener mOnErrorListener;
     private OnInfoListener mOnInfoListener;
     private OnTimedTextListener mOnTimedTextListener;
-    private int drmType;
-    private int streamType;
-    private String drmLicenseServerUrl;
-    private Map<String,String> drmReqHeaders;
-    private String drmReqMethod;
+
+    private int mDrmType = IMediaPlayer.DRM_TYPE_NULL;
+    private boolean mDrmMultiSession = false;
+    // stream type暂时不使用
+    private int mStreamType = IMediaPlayer.STREAM_UNKNOWN;
+    private String mDrmLicenseServerUrl;
+    private Map<String, String> mDrmReqHeaders;
+    private String mDrmReqMethod;
+
     public static final UUID COMMON_PSSH_UUID = new UUID(0x1077EFECC0B24D02L, 0xACE33C1E52E2FB4BL);
     public static final UUID CLEARKEY_UUID = new UUID(0xE2719D58A985B3C9L, 0x781AB030AF78D30EL);
     public static final UUID WIDEVINE_UUID = new UUID(0xEDEF8BA979D64ACEL, 0xA3C827DCD51D21EDL);
@@ -84,31 +89,46 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
         mOnTimedTextListener = listener;
     }
 
-    public final void setDrminfo(int drmType, int streamType, String licenseServerUrl, Map<String,String> headers, String reqMethod) {
-        this.drmType = drmType;
-        this.streamType = streamType;
-        this.drmLicenseServerUrl = licenseServerUrl;
-        this.drmReqHeaders = headers;
-        this.drmReqMethod = reqMethod;
+    public void setDrmInfo(int drmType, boolean multiSession, String licenseServerUrl, Map<String, String> headers, String reqMethod) {
+        mDrmType = drmType;
+        mDrmMultiSession = multiSession;
+        mDrmLicenseServerUrl = licenseServerUrl;
+        mDrmReqHeaders = headers;
+        mDrmReqMethod = reqMethod;
     }
+
     public final int getDrmType() {
-        return drmType;
+        return mDrmType;
     }
+
+    public final boolean isDrmMultiSession() {
+        return mDrmMultiSession;
+    }
+
     public final int getStreamType() {
-        return streamType;
+        return mStreamType;
     }
-    public final String getDrmlicenseServerUrl() {
-        return drmLicenseServerUrl;
+
+    public final String getDrmLicenseServerUrl() {
+        return mDrmLicenseServerUrl;
     }
-    public final Map<String,String>  getReqHeaders() { return drmReqHeaders; }
-    public final String getreqMethod() { return drmReqMethod;}
-    public final String getMimetype() {
-        return streamType == IMediaPlayer.STREAM_DASH ? "/dash-xml" : "/x-mpegURL";
+
+    public final Map<String, String> getReqHeaders() {
+        return mDrmReqHeaders;
     }
-    public final UUID getUUID() {
-        if (drmType == IMediaPlayer.DRM_TYPE_WIDEVINE)
+
+    public final String getDrmReqMethod() {
+        return mDrmReqMethod;
+    }
+
+    /*public final String getMimeType() {
+        return mStreamType == IMediaPlayer.STREAM_DASH ? "/dash-xml" : "/x-mpegURL";
+    }*/
+
+    public final UUID getDrmUUID() {
+        if (mDrmType == IMediaPlayer.DRM_TYPE_WIDEVINE)
             return WIDEVINE_UUID;
-        if (drmType == IMediaPlayer.DRM_TYPE_PLAYREADY)
+        if (mDrmType == IMediaPlayer.DRM_TYPE_PLAYREADY)
             return PLAYREADY_UUID;
         return UUID_NIL;
     }
@@ -155,8 +175,8 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
         return mOnErrorListener != null && mOnErrorListener.onError(this, what, extra);
     }
 
-    protected final boolean notifyOnInfo(int what, int extra) {
-        return mOnInfoListener != null && mOnInfoListener.onInfo(this, what, extra);
+    protected final boolean notifyOnInfo(int what, int extra, String info) {
+        return mOnInfoListener != null && mOnInfoListener.onInfo(this, what, extra, info);
     }
 
     protected final void notifyOnTimedText(IjkTimedText text) {
@@ -166,5 +186,10 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
 
     public void setDataSource(IMediaDataSource mediaDataSource) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getVideoCodecName() {
+        return "unknown";
     }
 }

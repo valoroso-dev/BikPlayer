@@ -48,14 +48,16 @@ public interface IMediaPlayer {
     int MEDIA_INFO_TIMED_TEXT_ERROR = 900;
     int MEDIA_INFO_UNSUPPORTED_SUBTITLE = 901;
     int MEDIA_INFO_SUBTITLE_TIMED_OUT = 902;
+    int MEDIA_INFO_STREAM_FORMAT_SUMMARY = 903;
+    int MEDIA_INFO_STARTUP_INFO = 904;
 
     int MEDIA_INFO_VIDEO_ROTATION_CHANGED = 10001;
-    int MEDIA_INFO_AUDIO_RENDERING_START  = 10002;
-    int MEDIA_INFO_AUDIO_DECODED_START    = 10003;
-    int MEDIA_INFO_VIDEO_DECODED_START    = 10004;
-    int MEDIA_INFO_OPEN_INPUT             = 10005;
-    int MEDIA_INFO_FIND_STREAM_INFO       = 10006;
-    int MEDIA_INFO_COMPONENT_OPEN         = 10007;
+    int MEDIA_INFO_AUDIO_RENDERING_START = 10002;
+    int MEDIA_INFO_AUDIO_DECODED_START = 10003;
+    int MEDIA_INFO_VIDEO_DECODED_START = 10004;
+    int MEDIA_INFO_OPEN_INPUT = 10005;
+    int MEDIA_INFO_FIND_STREAM_INFO = 10006;
+    int MEDIA_INFO_COMPONENT_OPEN = 10007;
     int MEDIA_INFO_VIDEO_SEEK_RENDERING_START = 10008;
     int MEDIA_INFO_AUDIO_SEEK_RENDERING_START = 10009;
     int MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE = 10100;
@@ -69,19 +71,19 @@ public interface IMediaPlayer {
     int MEDIA_ERROR_TIMED_OUT = -110;
 
     //DRM
-    int DRM_TYPE_NON = 0;
-    int DRM_TYPE_GOOSE = 1;
-    int DRM_TYPE_IREDO = 2;
-    int DRM_TYPE_WIDEVINE = 3;
-    int DRM_TYPE_FAIRPLAY = 4;
-    int DRM_TYPE_PLAYREADY = 5;
+    int DRM_TYPE_NULL = 0;
+    int DRM_TYPE_WIDEVINE = 1;
+    int DRM_TYPE_FAIRPLAY = 2;
+    int DRM_TYPE_PLAYREADY = 3;
+    int DRM_TYPE_GOOSE = 4;
 
     String DRM_REQ_POST = "POST";
     String DRM_REQ_GET = "GET";
 
+    int STREAM_UNKNOWN = -1;
     int STREAM_DASH = 0;
     int STREAM_HLS = 1;
-    int STREAM_OTHER = 2;
+    int STREAM_RPOGRESSIVE = 2;
 
     void setDisplay(SurfaceHolder sh);
 
@@ -157,14 +159,16 @@ public interface IMediaPlayer {
     void setOnInfoListener(OnInfoListener listener);
 
     void setOnTimedTextListener(OnTimedTextListener listener);
-    
+
     // trackType 1: audio, 2: video, 3: subtitle
     // exo only for now
     void setTrack(int trackType, int trackId);
+
     int getCurrentTrack(int trackType);
 
     // not just for drm scenes, use when exo
-    void setDrminfo(int drmType, int streamType, String licenceServerUrl, Map<String,String> headers, String reqMethod);
+    void setDrmInfo(int drmType, boolean multiSession, String licenceServerUrl, Map<String, String> headers, String reqMethod);
+
     /*--------------------
      * Listeners
      */
@@ -194,7 +198,7 @@ public interface IMediaPlayer {
     }
 
     interface OnInfoListener {
-        boolean onInfo(IMediaPlayer mp, int what, int extra);
+        boolean onInfo(IMediaPlayer mp, int what, int extra, String info);
     }
 
     interface OnTimedTextListener {
@@ -234,4 +238,6 @@ public interface IMediaPlayer {
      * AndroidMediaPlayer: M:
      */
     void setDataSource(IMediaDataSource mediaDataSource);
+
+    String getVideoCodecName();
 }

@@ -78,8 +78,13 @@ public class MediaPlayerProxy implements IMediaPlayer {
     }
 
     @Override
-    public void setDataSource(IMediaDataSource mediaDataSource)  {
+    public void setDataSource(IMediaDataSource mediaDataSource) {
         mBackEndMediaPlayer.setDataSource(mediaDataSource);
+    }
+
+    @Override
+    public String getVideoCodecName() {
+        return mBackEndMediaPlayer.getVideoCodecName();
     }
 
     @Override
@@ -273,8 +278,8 @@ public class MediaPlayerProxy implements IMediaPlayer {
             final OnInfoListener finalListener = listener;
             mBackEndMediaPlayer.setOnInfoListener(new OnInfoListener() {
                 @Override
-                public boolean onInfo(IMediaPlayer mp, int what, int extra) {
-                    return finalListener.onInfo(MediaPlayerProxy.this, what, extra);
+                public boolean onInfo(IMediaPlayer mp, int what, int extra, String info) {
+                    return finalListener.onInfo(MediaPlayerProxy.this, what, extra, info);
                 }
             });
         } else {
@@ -338,11 +343,16 @@ public class MediaPlayerProxy implements IMediaPlayer {
     }
 
     @Override
-    public final void setDrminfo(int drmType, int streamType, String licenseServerUrl, Map<String,String> headers, String reqMethod) {
+    public final void setTrack(int trackType, int trackId) {
     }
 
     @Override
-    public final void setTrack(int trackType, int trackId){}
+    public final int getCurrentTrack(int trackType) {
+        return -1;
+    }
+
     @Override
-    public final int getCurrentTrack(int trackType){return -1;}
+    public void setDrmInfo(int drmType, boolean multiSession, String licenceServerUrl, Map<String, String> headers, String reqMethod) {
+
+    }
 }
