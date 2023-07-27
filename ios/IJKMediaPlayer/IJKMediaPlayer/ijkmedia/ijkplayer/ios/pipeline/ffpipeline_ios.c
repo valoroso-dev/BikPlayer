@@ -61,6 +61,21 @@ static SDL_Aout *func_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
     return SDL_AoutIos_CreateForAudioUnit();
 }
 
+static int func_check_support_drm(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+{
+    return 1;
+}
+
+static int func_update_drm_init_info(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+{
+    return 1;
+}
+
+static int func_get_drm_session_state(IJKFF_Pipeline *pipeline, FFPlayer *ffp, int type, int flag)
+{
+    return 1;
+}
+
 static SDL_Class g_pipeline_class = {
     .name = "ffpipeline_ios",
 };
@@ -76,6 +91,9 @@ IJKFF_Pipeline *ffpipeline_create_from_ios(FFPlayer *ffp)
     pipeline->func_destroy            = func_destroy;
     pipeline->func_open_video_decoder = func_open_video_decoder;
     pipeline->func_open_audio_output  = func_open_audio_output;
+    pipeline->func_check_support_drm  = func_check_support_drm;
+    pipeline->func_update_drm_init_info = func_update_drm_init_info;
+    pipeline->func_get_drm_session_state = func_get_drm_session_state;
 
     return pipeline;
 }
