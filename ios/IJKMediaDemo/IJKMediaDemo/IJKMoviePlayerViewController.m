@@ -36,6 +36,11 @@
     [viewController presentViewController:[[IJKVideoViewController alloc] initWithURL:url] animated:YES completion:completion];
 }
 
++ (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSURL *)url fpsCertificateUrl:(NSString *)certificateUrl fpsLicensingServiceUrl:(NSString *)licensingServiceUrl fpsLicensingToken:(NSString *)licensingToken completion:(void (^)())completion
+{
+    [viewController presentViewController:[[IJKVideoViewController alloc] initWithFPS:url fpsCertificateUrl:certificateUrl fpsLicensingServiceUrl:licensingServiceUrl fpsLicensingToken:licensingToken] animated:YES completion:completion];
+}
+
 - (instancetype)initWithManifest: (NSString*)manifest_string {
     self = [self initWithNibName:@"IJKMoviePlayerViewController" bundle:nil];
     if (self) {
@@ -49,6 +54,18 @@
     self = [self initWithNibName:@"IJKMoviePlayerViewController" bundle:nil];
     if (self) {
         self.url = url;
+    }
+    return self;
+}
+
+- (id)initWithFPS:(NSURL *)url fpsCertificateUrl:(NSString *)certificateUrl fpsLicensingServiceUrl:(NSString *)licensingServiceUrl fpsLicensingToken:(NSString *)licensingToken
+{
+    self = [self initWithNibName:@"IJKMoviePlayerViewController" bundle:nil];
+    if (self) {
+        self.url = url;
+        self.fpsCertificateUrl = certificateUrl;
+        self.fpsLicensingServiceUrl = licensingServiceUrl;
+        self.fpsLicensingToken = licensingToken;
     }
     return self;
 }
@@ -89,7 +106,14 @@
         [options setPlayerOptionIntValue:0              forKey:@"find_stream_info"];
         [options setFormatOptionValue:self.manifest     forKey:@"manifest_string"];
     }
-    self.player = [[IJKFFMoviePlayerController alloc] initWithContentURL:self.url withOptions:options];
+    if (self.fpsCertificateUrl != nil && self.fpsLicensingServiceUrl != nil && self.fpsLicensingToken != nil) {
+        IJKAVMoviePlayerController *playerController = [IJKAVMoviePlayerController alloc];
+        NSDictionary *params = [NSDictionary dictionaryWithObject:self.fpsLicensingToken forKey:@"X-AxDRM-Message"];
+        [playerController setFairPlayCertificate:self.fpsCertificateUrl fpsLicensingServiceUrl:self.fpsLicensingServiceUrl fpsParams:params];
+        self.player = [playerController initWithContentURL:self.url];
+    } else {
+        self.player = [[IJKFFMoviePlayerController alloc] initWithContentURL:self.url withOptions:options];
+    }
     self.player.view.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
     self.player.view.frame = self.view.bounds;
     self.player.scalingMode = IJKMPMovieScalingModeAspectFit;
