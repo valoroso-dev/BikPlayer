@@ -82,6 +82,7 @@ static int func_run_sync(IJKFF_Pipenode *node)
 
     if (opaque->context) {
         opaque->context->free(opaque->context->opaque);
+        free(opaque->context->opaque);
         free(opaque->context);
         opaque->context = NULL;
     }
@@ -123,9 +124,10 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_ios_videotoolbox(FFPlayer *
         goto fail;
     }
     if (opaque->context == NULL) {
-        ALOGE("could not init video tool box decoder !!!");
+        ALOGE("could not init video tool box decoder !!!\n");
         goto fail;
     }
+    ffp_set_video_codec_info(ffp, VIDEOTOOLBOX_MODULE_NAME, avcodec_get_name(opaque->avctx->codec_id));
     return node;
 
 fail:
