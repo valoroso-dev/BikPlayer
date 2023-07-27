@@ -42,6 +42,10 @@ typedef struct IJKFF_Pipeline_Opaque {
     bool         (*mediacodec_select_callback)(void *opaque, ijkmp_mediacodecinfo_context *mcc);
     void          *mediacodec_select_callback_opaque;
 
+    int          (*on_drm_init_info_updated_callback)(void *opaque, char* drm_info, int len, int flag);
+    jobject      (*get_media_crypto_callback)(void *opaque, int type);
+    int          (*get_drm_session_state_callback)(void *opaque, int type, int flag);
+
     SDL_Vout      *weak_vout;
 
     float          left_volume;
@@ -74,6 +78,7 @@ static IJKFF_Pipenode *func_open_video_decoder(IJKFF_Pipeline *pipeline, FFPlaye
         node = ffpipenode_create_video_decoder_from_android_mediacodec(ffp, pipeline, opaque->weak_vout);
     if (!node) {
         node = ffpipenode_create_video_decoder_from_ffplay(ffp);
+        ALOGD("Rapid func_open_video_decoder mediacodec fial --------------\n");
     }
 
     return node;
@@ -87,8 +92,10 @@ static SDL_Aout *func_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
     } else {
         aout = SDL_AoutAndroid_CreateForAudioTrack();
     }
-    if (aout)
+    if (aout) {
         SDL_AoutSetStereoVolume(aout, pipeline->opaque->left_volume, pipeline->opaque->right_volume);
+        SDL_AoutSetPolicy(aout, ffp->audio_write_policy);
+    }
     return aout;
 }
 
@@ -113,6 +120,53 @@ static int func_config_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
     }
 
     return ret;
+}
+
+static int func_check_support_drm(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+{
+    char *drm_info = ffp->drm_info;
+    JNIEnv *env = NULL;
+
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
+        ALOGE("amediacodec-pipeline:check support drm: SetupThreadEnv failed\n");
+        goto fail;
+    }
+
+    if (!strstr(drm_info, ",cenc,") && !strstr(drm_info, ",cbcs,")) {
+        ALOGE("amediacodec-pipeline:check support drm:only support cenc and cbcs.\n");
+        return 0;
+    }
+
+    if (J4A_GetSystemAndroidApiLevel(env) < 18) {
+        ALOGE("amediacodec-pipeline:check support drm:the min level supported drm is 18.\n");
+        return 0;
+    }
+
+    if (strstr(drm_info, "video,") && !(ffp->mediacodec_all_videos || ffp->mediacodec_avc || ffp->mediacodec_hevc || ffp->mediacodec_mpeg2)) {
+        ALOGE("amediacodec-pipeline:check support drm:must use mediacodec for drm decoding.\n");
+        return 0;
+    }
+
+    if ((strstr(drm_info, "audio,cbcs,") || strstr(drm_info, "video,cbcs,")) && J4A_GetSystemAndroidApiLevel(env) < 25) {
+        ALOGE("amediacodec-pipeline:check support drm:the min level supported aes cbcs is 25.\n");
+        return 0;
+    }
+
+    return 1;
+
+fail:
+    return 0;
+}
+
+static int func_update_drm_init_info(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+{
+    char *drm_info = ffp->drm_info;
+    return ffpipeline_on_drm_init_info_updated_l(pipeline, drm_info, strlen(drm_info) + 1, ffp->drm_flag);
+}
+
+static int func_get_drm_session_state(IJKFF_Pipeline *pipeline, FFPlayer *ffp, int type, int flag)
+{
+    return ffpipeline_get_drm_session_state_l(pipeline, type, flag);
 }
 
 
@@ -153,6 +207,9 @@ IJKFF_Pipeline *ffpipeline_create_from_android(FFPlayer *ffp)
     pipeline->func_open_audio_output    = func_open_audio_output;
     pipeline->func_init_video_decoder   = func_init_video_decoder;
     pipeline->func_config_video_decoder = func_config_video_decoder;
+    pipeline->func_check_support_drm    = func_check_support_drm;
+    pipeline->func_update_drm_init_info = func_update_drm_init_info;
+    pipeline->func_get_drm_session_state= func_get_drm_session_state;
 
     return pipeline;
 fail:
@@ -278,6 +335,68 @@ bool ffpipeline_select_mediacodec_l(IJKFF_Pipeline* pipeline, ijkmp_mediacodecin
         return false;
 
     return pipeline->opaque->mediacodec_select_callback(pipeline->opaque->mediacodec_select_callback_opaque, mcc);
+}
+
+void ffpipeline_set_on_drm_init_info_updated_callback(IJKFF_Pipeline* pipeline, int (*callback)(void *opaque, char* drm_info, int len, int flag))
+{
+    ALOGD("%s\n", __func__);
+    if (!check_ffpipeline(pipeline, __func__))
+        return;
+
+    pipeline->opaque->on_drm_init_info_updated_callback = callback;
+}
+
+int ffpipeline_on_drm_init_info_updated_l(IJKFF_Pipeline* pipeline, char* drm_info, int len, int flag)
+{
+    // ALOGD("%s\n", __func__);
+    if (!check_ffpipeline(pipeline, __func__))
+        return 0;
+
+    if (!pipeline->opaque->on_drm_init_info_updated_callback)
+        return 0;
+
+    return pipeline->opaque->on_drm_init_info_updated_callback(pipeline->opaque->mediacodec_select_callback_opaque, drm_info, len, flag);
+}
+
+void ffpipeline_set_get_media_crypto_callback(IJKFF_Pipeline* pipeline, jobject (*callback)(void *opaque, int type))
+{
+    ALOGD("%s\n", __func__);
+    if (!check_ffpipeline(pipeline, __func__))
+        return;
+
+    pipeline->opaque->get_media_crypto_callback = callback;
+}
+
+jobject ffpipeline_get_media_crypto_l(IJKFF_Pipeline* pipeline, int type)
+{
+    ALOGD("%s\n", __func__);
+    if (!check_ffpipeline(pipeline, __func__))
+        return false;
+
+    if (!pipeline->opaque->get_media_crypto_callback)
+        return false;
+
+    return pipeline->opaque->get_media_crypto_callback(pipeline->opaque->mediacodec_select_callback_opaque, type);
+}
+
+void ffpipeline_set_get_drm_session_state_callback(IJKFF_Pipeline* pipeline, int (*callback)(void *opaque, int type, int flag))
+{
+    ALOGD("%s\n", __func__);
+    if (!check_ffpipeline(pipeline, __func__))
+        return;
+
+    pipeline->opaque->get_drm_session_state_callback = callback;
+}
+
+int ffpipeline_get_drm_session_state_l(IJKFF_Pipeline* pipeline, int type, int flag)
+{
+    if (!check_ffpipeline(pipeline, __func__))
+        return -1;
+
+    if (!pipeline->opaque->get_drm_session_state_callback)
+        return -1;
+
+    return pipeline->opaque->get_drm_session_state_callback(pipeline->opaque->mediacodec_select_callback_opaque, type, flag);
 }
 
 void ffpipeline_set_volume(IJKFF_Pipeline* pipeline, float left, float right)

@@ -52,4 +52,13 @@ bool    ffpipeline_select_mediacodec_l(IJKFF_Pipeline* pipeline, ijkmp_mediacode
 
 void    ffpipeline_set_volume(IJKFF_Pipeline* pipeline, float left, float right);
 
+void    ffpipeline_set_get_media_crypto_callback(IJKFF_Pipeline* pipeline, jobject (*callback)(void *opaque, int type));
+jobject ffpipeline_get_media_crypto_l(IJKFF_Pipeline* pipeline, int type);
+
+void    ffpipeline_set_get_drm_session_state_callback(IJKFF_Pipeline* pipeline, int (*callback)(void *opaque, int type, int flag));
+int     ffpipeline_get_drm_session_state_l(IJKFF_Pipeline* pipeline, int type, int flag);
+
+void    ffpipeline_set_on_drm_init_info_updated_callback(IJKFF_Pipeline* pipeline, int (*callback)(void *opaque, char* drm_info, int len, int flag));
+int     ffpipeline_on_drm_init_info_updated_l(IJKFF_Pipeline* pipeline, char* drm_info, int len, int flag);
+
 #endif

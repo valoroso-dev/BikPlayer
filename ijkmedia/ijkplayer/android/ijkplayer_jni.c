@@ -39,6 +39,7 @@
 #include "ijksdl/android/ijksdl_android_jni.h"
 #include "ijksdl/android/ijksdl_codec_android_mediadef.h"
 #include "ijkavformat/ijkavformat.h"
+#include "libavcodec/jni.h"
 
 #define JNI_MODULE_PACKAGE      "tv/danmaku/ijk/media/player"
 #define JNI_CLASS_IJKPLAYER     "tv/danmaku/ijk/media/player/IjkMediaPlayer"
@@ -59,6 +60,9 @@ static player_fields_t g_clazz;
 
 static int inject_callback(void *opaque, int type, void *data, size_t data_size);
 static bool mediacodec_select_callback(void *opaque, ijkmp_mediacodecinfo_context *mcc);
+static int on_drm_init_info_updated_callback(void *opaque, char* drm_info, int len, int flag);
+static jobject get_media_crypto_callback(void *opaque, int type);
+static int get_drm_session_state_callback(void *opaque, int type, int flag);
 
 static IjkMediaPlayer *jni_get_media_player(JNIEnv* env, jobject thiz)
 {
@@ -758,6 +762,9 @@ IjkMediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_this)
     ijkmp_set_inject_opaque(mp, ijkmp_get_weak_thiz(mp));
     ijkmp_set_ijkio_inject_opaque(mp, ijkmp_get_weak_thiz(mp));
     ijkmp_android_set_mediacodec_select_callback(mp, mediacodec_select_callback, ijkmp_get_weak_thiz(mp));
+    ijkmp_android_set_on_drm_init_info_updated_callback(mp, on_drm_init_info_updated_callback);
+    ijkmp_android_set_get_media_crypto_callback(mp, get_media_crypto_callback);
+    ijkmp_android_set_get_drm_session_state_callback(mp, get_drm_session_state_callback);
 
 LABEL_RETURN:
     ijkmp_dec_ref_p(&mp);
@@ -879,6 +886,81 @@ fail:
     return found_codec_name;
 }
 
+static int on_drm_init_info_updated_callback(void *opaque, char* drm_info, int len, int flag)
+{
+    JNIEnv *env = NULL;
+    jobject weak_this = (jobject) opaque;
+    jstring stringObj = NULL;
+    jbyteArray bytesObj = NULL;
+    int ret;
+
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
+        ALOGE("%s: SetupThreadEnv failed\n", __func__);
+        ret = 0;
+        goto fail;
+    }
+
+    stringObj = (*env)->NewStringUTF(env, drm_info);
+    if (J4A_ExceptionCheck__catchAll(env) || !stringObj) {
+        ret = 0;
+        goto fail;
+    }
+
+    ret = J4AC_IjkMediaPlayer__onDrmInitInfoUpdated(env, weak_this, stringObj, bytesObj, flag);
+    if (J4A_ExceptionCheck__catchAll(env)) {
+        ALOGE("%s: onDrmInitInfoUpdated failed\n", __func__);
+        ret = 0;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &stringObj);
+    J4A_DeleteLocalRef__p(env, &bytesObj);
+    return ret;
+}
+
+static jobject get_media_crypto_callback(void *opaque, int type)
+{
+    JNIEnv *env = NULL;
+    jobject weak_this = (jobject) opaque;
+    jobject media_crypto = NULL;
+
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
+        ALOGE("%s: SetupThreadEnv failed\n", __func__);
+        goto fail;
+    }
+
+    media_crypto = J4AC_IjkMediaPlayer__getMediaCrypto(env, weak_this, type);
+    if (J4A_ExceptionCheck__catchAll(env) || !media_crypto) {
+        ALOGE("%s: getMediaCrypto failed\n", __func__);
+        goto fail;
+    }
+
+fail:
+    return media_crypto;
+}
+
+static int get_drm_session_state_callback(void *opaque, int type, int flag)
+{
+    JNIEnv *env = NULL;
+    jobject weak_this = (jobject) opaque;
+    int state = -1;
+
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
+        ALOGE("%s: SetupThreadEnv failed\n", __func__);
+        goto fail;
+    }
+
+    state = J4AC_IjkMediaPlayer__getDrmSessionState(env, weak_this, type, flag);
+    if (J4A_ExceptionCheck__catchAll(env)) {
+        ALOGE("%s: getMediaCrypto failed\n", __func__);
+        goto fail;
+    }
+
+fail:
+    return state;
+}
+
 inline static void post_event(JNIEnv *env, jobject weak_this, int what, int arg1, int arg2)
 {
     // MPTRACE("post_event(%p, %p, %d, %d, %d)", (void*)env, (void*) weak_this, what, arg1, arg2);
@@ -957,6 +1039,14 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
             MPTRACE("FFP_MSG_OPEN_INPUT:\n");
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_OPEN_INPUT, 0);
             break;
+        case FFP_MSG_READ_FIRST_VIDEO_FRAME:
+            MPTRACE("FFP_MSG_READ_FIRST_VIDEO_FRAME:\n");
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_READ_FIRST_VIDEO_FRAME, 0);
+            break;
+        case FFP_MSG_READ_FIRST_AUDIO_FRAME:
+            MPTRACE("FFP_MSG_READ_FIRST_AUDIO_FRAME:\n");
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_READ_FIRST_AUDIO_FRAME, 0);
+            break;
         case FFP_MSG_FIND_STREAM_INFO:
             MPTRACE("FFP_MSG_FIND_STREAM_INFO:\n");
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_FIND_STREAM_INFO, 0);
@@ -966,12 +1056,20 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_COMPONENT_OPEN, 0);
             break;
         case FFP_MSG_BUFFERING_START:
-            MPTRACE("FFP_MSG_BUFFERING_START:\n");
-            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_BUFFERING_START, msg.arg1);
+            MPTRACE("FFP_MSG_BUFFERING_START %d %d:\n", msg.arg1, msg.arg2);
+            char start_reason_text[10] = {0};
+            sprintf(start_reason_text, "%d", msg.arg2);
+            jstring start_reason_string = (*env)->NewStringUTF(env, start_reason_text);
+            post_event2(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_BUFFERING_START, msg.arg1, start_reason_string);
+            J4A_DeleteLocalRef__p(env, &start_reason_string);
             break;
         case FFP_MSG_BUFFERING_END:
-            MPTRACE("FFP_MSG_BUFFERING_END:\n");
-            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_BUFFERING_END, msg.arg1);
+            MPTRACE("FFP_MSG_BUFFERING_END %d %d:\n", msg.arg1, msg.arg2);
+            char end_reason_text[10] = {0};
+            sprintf(end_reason_text, "%d", msg.arg2);
+            jstring end_reason_string = (*env)->NewStringUTF(env, end_reason_text);
+            post_event2(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_BUFFERING_END, msg.arg1, end_reason_string);
+            J4A_DeleteLocalRef__p(env, &end_reason_string);
             break;
         case FFP_MSG_BUFFERING_UPDATE:
             // MPTRACE("FFP_MSG_BUFFERING_UPDATE: %d, %d", msg.arg1, msg.arg2);
@@ -999,6 +1097,28 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
             }
             else {
                 post_event2(env, weak_thiz, MEDIA_TIMED_TEXT, 0, 0, NULL);
+            }
+            break;
+        case FFP_MSG_STREAM_INFO:
+            MPTRACE("FFP_MSG_STREAM_INFO\n");
+            if (msg.obj) {
+                jstring text = (*env)->NewStringUTF(env, (char *)msg.obj);
+                post_event2(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_STREAM_INFO_SUMMARY, msg.arg2, text);
+                J4A_DeleteLocalRef__p(env, &text);
+            }
+            else {
+                post_event2(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_STREAM_INFO_SUMMARY, msg.arg2, NULL);
+            }
+            break;
+        case FFP_MSG_STARTUP_INFO:
+            MPTRACE("FFP_MSG_STARTUP_INFO\n");
+            if (msg.obj) {
+                jstring text = (*env)->NewStringUTF(env, (char *)msg.obj);
+                post_event2(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_STARTUP_INFO, msg.arg2, text);
+                J4A_DeleteLocalRef__p(env, &text);
+            }
+            else {
+                post_event2(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_STARTUP_INFO, msg.arg2, NULL);
             }
             break;
         case FFP_MSG_GET_IMG_STATE:
@@ -1184,6 +1304,7 @@ static JNINativeMethod g_methods[] = {
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
 {
+    av_jni_set_java_vm(vm, 0);
     JNIEnv* env = NULL;
 
     g_jvm = vm;

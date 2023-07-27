@@ -125,3 +125,51 @@ void ijkmp_android_set_mediacodec_select_callback(IjkMediaPlayer *mp, bool (*cal
     pthread_mutex_unlock(&mp->mutex);
     MPTRACE("ijkmp_android_set_mediacodec_select_callback()=void");
 }
+
+void ijkmp_android_set_on_drm_init_info_updated_callback(IjkMediaPlayer *mp, int (*callback)(void *opaque, char* drm_info, int len, int flag))
+{
+    if (!mp)
+        return;
+
+    MPTRACE("ijkmp_android_set_on_drm_init_info_updated_callback()");
+    pthread_mutex_lock(&mp->mutex);
+
+    if (mp && mp->ffplayer && mp->ffplayer->pipeline) {
+        ffpipeline_set_on_drm_init_info_updated_callback(mp->ffplayer->pipeline, callback);
+    }
+
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_android_set_on_drm_init_info_updated_callback()=void");
+}
+
+void ijkmp_android_set_get_media_crypto_callback(IjkMediaPlayer *mp, jobject (*callback)(void *opaque, int type))
+{
+    if (!mp)
+        return;
+
+    MPTRACE("ijkmp_android_set_get_media_crypto_callback()");
+    pthread_mutex_lock(&mp->mutex);
+
+    if (mp && mp->ffplayer && mp->ffplayer->pipeline) {
+        ffpipeline_set_get_media_crypto_callback(mp->ffplayer->pipeline, callback);
+    }
+
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_android_set_get_media_crypto_callback()=void");
+}
+
+void ijkmp_android_set_get_drm_session_state_callback(IjkMediaPlayer *mp, int (*callback)(void *opaque, int type, int flag))
+{
+    if (!mp)
+        return;
+
+    MPTRACE("ijkmp_android_set_get_drm_session_state_callback()");
+    pthread_mutex_lock(&mp->mutex);
+
+    if (mp && mp->ffplayer && mp->ffplayer->pipeline) {
+        ffpipeline_set_get_drm_session_state_callback(mp->ffplayer->pipeline, callback);
+    }
+
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_android_set_get_drm_session_state_callback()=void");
+}
