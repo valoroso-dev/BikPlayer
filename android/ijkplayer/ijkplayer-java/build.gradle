@@ -1,5 +1,7 @@
 apply plugin: 'com.android.library'
 
+group   = "${GROUP}"
+version = "${VERSION_NAME}"
 android {
     // http://tools.android.com/tech-docs/new-build-system/tips
     //noinspection GroovyAssignabilityCheck
@@ -18,12 +20,18 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            buildConfigField("String", "VERSION_CODE", "\"" + "${VERSION_CODE}" + "\"")
+        }
+        debug {
+            buildConfigField("String", "VERSION_CODE", "\"" + "${VERSION_CODE}" + "\"")
         }
     }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.3.0'
+    compileOnly project(':ijkplayer-common')
 }
 
 apply from: new File(rootProject.projectDir, "tools/gradle-on-demand.gradle");
