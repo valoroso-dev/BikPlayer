@@ -104,6 +104,7 @@ typedef enum IJKLogLevel {
 + (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert;
 + (BOOL)checkIfPlayerVersionMatch:(BOOL)showAlert
                             version:(NSString *)version;
++ (NSString *)playerVersion;
 
 @property(nonatomic, readonly) CGFloat fpsInMeta;
 @property(nonatomic, readonly) CGFloat fpsAtOutput;
@@ -128,6 +129,8 @@ typedef enum IJKLogLevel {
 - (void)setCodecOptionIntValue:     (int64_t)value forKey:(NSString *)key;
 - (void)setSwsOptionIntValue:       (int64_t)value forKey:(NSString *)key;
 - (void)setPlayerOptionIntValue:    (int64_t)value forKey:(NSString *)key;
+- (void)setAudioTrack:              (int)stream selected:(int)selected;
+- (int64_t)getPropertyInt64:        (int)nameId defaultValue:(int64_t)value;
 
 @property (nonatomic, retain) id<IJKMediaUrlOpenDelegate> segmentOpenDelegate;
 @property (nonatomic, retain) id<IJKMediaUrlOpenDelegate> tcpOpenDelegate;

@@ -54,6 +54,8 @@ NSString *const IJKMPMoviePlayerDidAccurateSeekCompleteCurPos = @"IJKMPMoviePlay
 
 NSString *const IJKMPMoviePlayerSeekAudioStartNotification  = @"IJKMPMoviePlayerSeekAudioStartNotification";
 NSString *const IJKMPMoviePlayerSeekVideoStartNotification  = @"IJKMPMoviePlayerSeekVideoStartNotification";
+NSString *const IJKMPMoviePlayerStartupInfoNotification = @"IJKMPMoviePlayerStartupInfoNotification";
+NSString *const IJKMPMoviePlayerStartupInfoKey = @"IJKMPMoviePlayerStartupInfoKey";
 
 @implementation IJKMediaUrlOpenData {
     NSString *_url;
