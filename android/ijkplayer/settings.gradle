@@ -5,6 +5,7 @@ include ':ijkplayer-x86'
 
 include ':ijkplayer-java'
 include ':ijkplayer-exo'
+include ':ijkplayer-common'
 
 include ':ijkplayer-example'
 
