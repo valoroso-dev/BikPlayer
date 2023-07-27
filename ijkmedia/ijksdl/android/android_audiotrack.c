@@ -326,7 +326,7 @@ int SDL_Android_AudioTrack_reserve_byte_buffer(JNIEnv *env, SDL_Android_AudioTra
     return capacity;
 }
 
-int SDL_Android_AudioTrack_write(JNIEnv *env, SDL_Android_AudioTrack *atrack, uint8_t *data, int size_in_byte)
+int SDL_Android_AudioTrack_write(JNIEnv *env, SDL_Android_AudioTrack *atrack, uint8_t *data, int size_in_byte, int write_mode)
 {
     if (size_in_byte <= 0)
         return size_in_byte;
@@ -341,7 +341,12 @@ int SDL_Android_AudioTrack_write(JNIEnv *env, SDL_Android_AudioTrack *atrack, ui
     if (J4A_ExceptionCheck__catchAll(env))
         return -1;
 
-    int retval = J4AC_AudioTrack__write(env, atrack->thiz, atrack->byte_buffer, 0, (int)size_in_byte);
+    int retval;
+    if (J4A_GetSystemAndroidApiLevel(env) >= 23) {
+        retval = J4AC_AudioTrack__write23(env, atrack->thiz, atrack->byte_buffer, 0, (int)size_in_byte, write_mode);
+    } else {
+        retval = J4AC_AudioTrack__write(env, atrack->thiz, atrack->byte_buffer, 0, (int)size_in_byte);
+    }
     if (J4A_ExceptionCheck__catchAll(env))
         return -1;
 

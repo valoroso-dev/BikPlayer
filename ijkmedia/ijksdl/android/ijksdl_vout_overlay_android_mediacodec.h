@@ -30,6 +30,7 @@
 
 typedef struct SDL_AMediaCodec           SDL_AMediaCodec;
 typedef struct SDL_AMediaCodecBufferInfo SDL_AMediaCodecBufferInfo;
+typedef struct SDL_AMediaCodecCryptoInfo SDL_AMediaCodecCryptoInfo;
 
 SDL_VoutOverlay *SDL_VoutAMediaCodec_CreateOverlay(int width, int height, SDL_Vout *vout);
 

@@ -98,6 +98,16 @@ static sdl_amedia_status_t SDL_AMediaCodecDummy_queueInputBuffer(SDL_AMediaCodec
     return SDL_AMediaCodec_FakeFifo_queueInputBuffer(&acodec->opaque->dummy_fifo, idx, offset, size, time, flags | AMEDIACODEC__BUFFER_FLAG_FAKE_FRAME);
 }
 
+static sdl_amedia_status_t SDL_AMediaCodecDummy_queueSecureInputBuffer(SDL_AMediaCodec* acodec, size_t idx, off_t offset, SDL_AMediaCodecCryptoInfo *info, uint64_t time, uint32_t flags)
+{
+    DMY_TRACE("%s", __func__);
+    size_t size = 0;
+    if (info && info->numSubSamples > 0) {
+        size = info->numBytesOfEncryptedData[0];
+    }
+    return SDL_AMediaCodec_FakeFifo_queueInputBuffer(&acodec->opaque->dummy_fifo, idx, offset, size, time, flags | AMEDIACODEC__BUFFER_FLAG_FAKE_FRAME);
+}
+
 static ssize_t SDL_AMediaCodecDummy_dequeueOutputBuffer(SDL_AMediaCodec* acodec, SDL_AMediaCodecBufferInfo *info, int64_t timeoutUs)
 {
     DMY_TRACE("%s", __func__);
@@ -139,6 +149,7 @@ SDL_AMediaCodec* SDL_AMediaCodecDummy_create()
 
     acodec->func_dequeueInputBuffer     = SDL_AMediaCodecDummy_dequeueInputBuffer;
     acodec->func_queueInputBuffer       = SDL_AMediaCodecDummy_queueInputBuffer;
+    acodec->func_queueSecureInputBuffer = SDL_AMediaCodecDummy_queueSecureInputBuffer;
 
     acodec->func_dequeueOutputBuffer    = SDL_AMediaCodecDummy_dequeueOutputBuffer;
     acodec->func_getOutputFormat        = SDL_AMediaCodecDummy_getOutputFormat;
