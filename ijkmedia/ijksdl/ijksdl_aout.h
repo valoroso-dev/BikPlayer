@@ -43,6 +43,7 @@ struct SDL_Aout {
     void (*flush_audio)(SDL_Aout *aout);
     void (*set_volume)(SDL_Aout *aout, float left, float right);
     void (*close_audio)(SDL_Aout *aout);
+    void (*set_policy)(SDL_Aout *aout, int policy);
 
     double (*func_get_latency_seconds)(SDL_Aout *aout);
     void   (*func_set_default_latency_seconds)(SDL_Aout *aout, double latency);

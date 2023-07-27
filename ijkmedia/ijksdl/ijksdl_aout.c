@@ -133,3 +133,8 @@ int SDL_AoutGetAudioPerSecondCallBacks(SDL_Aout *aout)
     }
     return SDL_AUDIO_MAX_CALLBACKS_PER_SEC;
 }
+void SDL_AoutSetPolicy(SDL_Aout *aout, int policy)
+{
+    if(aout && aout->set_policy)
+        aout->set_policy(aout, policy);
+}
