@@ -72,6 +72,7 @@ typedef struct IJKFF_Pipenode_Opaque {
     SDL_AMediaFormat         *input_aformat;
     SDL_AMediaCodec          *acodec;
     SDL_AMediaFormat         *output_aformat;
+    SDL_AMediaCodecCryptoInfo *crypto_info;
     char                      acodec_name[128];
     int                       frame_width;
     int                       frame_height;
@@ -96,6 +97,7 @@ typedef struct IJKFF_Pipenode_Opaque {
 
     volatile bool             acodec_flush_request;
     volatile bool             acodec_reconfigure_request;
+    volatile bool             acodec_has_configure_crypto;
 
     SDL_mutex                *acodec_first_dequeue_output_mutex;
     SDL_cond                 *acodec_first_dequeue_output_cond;
@@ -175,7 +177,7 @@ static int recreate_format_l(JNIEnv *env, IJKFF_Pipenode *node)
     FFPlayer              *ffp            = opaque->ffp;
     int                    rotate_degrees = 0;
 
-    ALOGI("AMediaFormat: %s, %dx%d\n", opaque->mcc.mime_type, opaque->codecpar->width, opaque->codecpar->height);
+    ALOGI("Rapid AMediaFormat: %s, %dx%d,profile = %d\n", opaque->mcc.mime_type, opaque->codecpar->width, opaque->codecpar->height,opaque->codecpar->profile);
     SDL_AMediaFormat_deleteP(&opaque->output_aformat);
     opaque->input_aformat = SDL_AMediaFormatJava_createVideoFormat(env, opaque->mcc.mime_type, opaque->codecpar->width, opaque->codecpar->height);
     if (opaque->codecpar->extradata && opaque->codecpar->extradata_size > 0) {
@@ -245,8 +247,14 @@ static int recreate_format_l(JNIEnv *env, IJKFF_Pipenode *node)
             SDL_AMediaFormat_setBuffer(opaque->input_aformat, "csd-0", convert_buffer, esds_size);
             free(convert_buffer);
         } else {
-            // Codec specific data
-            // SDL_AMediaFormat_setBuffer(opaque->aformat, "csd-0", opaque->codecpar->extradata, opaque->codecpar->extradata_size);
+            // fix issue that the screen becomes blurred on low-version devices when playing some mpegts video
+            if (ffp->mediacodec_naked_csd && SDL_Android_GetApiLevel() <= IJK_API_23_M && opaque->codecpar->codec_id == AV_CODEC_ID_HEVC &&
+                opaque->codecpar->extradata && opaque->codecpar->extradata_size > 3 &&
+                opaque->codecpar->extradata[0] == 0 && opaque->codecpar->extradata[1] == 0 && opaque->codecpar->extradata[2] == 1) {
+                // Codec specific data
+                SDL_AMediaFormat_setBuffer(opaque->input_aformat, "csd-0", opaque->codecpar->extradata, opaque->codecpar->extradata_size);
+                ALOGE("pass naked-csd to media format\n");
+            }
             ALOGE("csd-0: naked\n");
         }
     } else {
@@ -274,9 +282,20 @@ fail:
 static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surface)
 {
     IJKFF_Pipenode_Opaque *opaque   = node->opaque;
+    FFPlayer              *ffp      = opaque->ffp;
     int                    ret      = 0;
     sdl_amedia_status_t    amc_ret  = 0;
     jobject                prev_jsurface = NULL;
+    jobject                crypto   = NULL;
+    ijkmp_mediacodecinfo_context *mcc    = &opaque->mcc;
+    // for mtk chip on some phone,if sps wasn't set before, set it here
+    if ( mcc && opaque->codecpar->codec_id == AV_CODEC_ID_H264 && opaque->codecpar->extradata_size > 0
+         && opaque->codecpar->extradata[0] != 1) {
+        if(0 == strncasecmp(mcc->codec_name, "OMX.MTK.VIDEO.DECODER.AVC", 25)) {
+            ALOGD("set sps for mtk chip");
+            SDL_AMediaFormat_setBuffer(opaque->input_aformat, "csd-0", opaque->codecpar->extradata, opaque->codecpar->extradata_size);
+        }
+    }
 
     prev_jsurface = opaque->jsurface;
     if (new_surface) {
@@ -321,7 +340,11 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
         assert(opaque->weak_vout);
     }
 
-    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, NULL, 0);
+    if (ffp->is_drm_source && opaque->jsurface) {
+        crypto = ffpipeline_get_media_crypto_l(opaque->pipeline, 1);
+    }
+    opaque->acodec_has_configure_crypto = crypto ? true : false;
+    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, crypto, 0);
     if (amc_ret != SDL_AMEDIA_OK) {
         ALOGE("%s:configure_surface: failed\n", __func__);
         ret = -1;
@@ -347,9 +370,11 @@ fail:
 static int configure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surface)
 {
     IJKFF_Pipenode_Opaque        *opaque = node->opaque;
+    FFPlayer                        *ffp = opaque->ffp;
     int                              ret = 0;
     sdl_amedia_status_t          amc_ret = 0;
     jobject                prev_jsurface = NULL;
+    jobject                crypto        = NULL;
     ijkmp_mediacodecinfo_context *mcc    = &opaque->mcc;
 
     prev_jsurface = opaque->jsurface;
@@ -386,7 +411,11 @@ static int configure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surf
         opaque->frame_width  = opaque->codecpar->width;
         opaque->frame_height = opaque->codecpar->height;
     }
-    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, NULL, 0);
+    if (ffp->is_drm_source && opaque->jsurface) {
+        crypto = ffpipeline_get_media_crypto_l(opaque->pipeline, 1);
+    }
+    opaque->acodec_has_configure_crypto = crypto ? true : false;
+    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, crypto, 0);
     if (amc_ret != SDL_AMEDIA_OK) {
         ALOGE("%s:configure_surface: failed\n", __func__);
         ret = -1;
@@ -465,6 +494,8 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
     ssize_t  copy_size              = 0;
     int64_t  time_stamp             = 0;
     uint32_t queue_flags            = 0;
+    int      is_encrypted           = 0;
+    int      is_drm_info_updated    = 0;
 
     if (enqueue_count)
         *enqueue_count = 0;
@@ -579,7 +610,32 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
         }
     }
 
+    if (ffp->is_drm_source) {
+        is_encrypted = (d->pkt_temp.flags & AV_PKT_FLAG_ENCRYPTED) ? 1 : 0;
+        is_drm_info_updated = (d->pkt_temp.flags & AV_PKT_FLAG_DRM_INIT_INFO) ? 1 : 0;
+    }
+
     if (d->pkt_temp.data) {
+        if (is_drm_info_updated) {
+            int session_state = 0;
+            if ((session_state = ffp_update_drm_init_info2(ffp, &d->pkt_temp, 1)) <= 0) {
+                ALOGE("%s: ffp_update_drm_init_info2 error\n", __func__);
+                ret = -1;
+                goto fail;
+            } else if (session_state != DRM_SESSION_LOADED) {
+                ALOGW("%s: waiting for drm key loaded\n", __func__);
+            }
+            while (session_state != DRM_SESSION_LOADED &&
+                    ffpipeline_get_drm_session_state_l(ffp->pipeline, 1, 0) != DRM_SESSION_LOADED) {
+                if (q->abort_request) {
+                    ALOGI("%s: abort request when loading drm key\n", __func__);
+                    ret = -1;
+                    goto fail;
+                }
+                av_usleep(10 * 1000);
+            }
+        }
+
         // reconfigure surface if surface changed
         // NULL surface cause no display
         if (ffpipeline_is_surface_need_reconfigure_l(pipeline)) {
@@ -628,6 +684,25 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
                 }
             }
         }
+        if (is_drm_info_updated && !opaque->acodec_has_configure_crypto) {
+            jobject new_surface = NULL;
+
+            // request reconfigure before lock, or never get mutex
+            ffpipeline_lock_surface(pipeline);
+            new_surface = ffpipeline_get_surface_as_global_ref_l(env, pipeline);
+            ffpipeline_unlock_surface(pipeline);
+
+            ret = reconfigure_codec_l(env, node, new_surface);
+
+            J4A_DeleteGlobalRef__p(env, &new_surface);
+
+            if (ret != 0) {
+                ALOGE("%s: reconfigure_codec failed\n", __func__);
+                ret = 0;
+                goto fail;
+            }
+            ALOGI("%s: reconfigure_codec for new crypto\n", __func__);
+        }
 
         queue_flags = 0;
         input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
@@ -660,8 +735,26 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
         } else {
             time_stamp = 0;
         }
+
         // ALOGE("queueInputBuffer, %lld\n", time_stamp);
-        amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, copy_size, time_stamp, queue_flags);
+        if (!is_encrypted) {
+            amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, copy_size, time_stamp, queue_flags);
+        } else {
+            if (!opaque->crypto_info) {
+                opaque->crypto_info = SDL_AMediaCodec_CryptoInfo_new();
+            }
+            SDL_AMediaCodecCryptoInfo *crypto_info = opaque->crypto_info;
+            if (!crypto_info) {
+                ALOGE("%s: crypto_info is invalid\n", __func__);
+                ret = -1;
+                goto fail;
+            }
+            uint8_t  *crypto_data      = NULL;
+            int       crypto_data_size = 0;
+            crypto_data = av_packet_get_side_data(&d->pkt_temp, AV_PKT_DATA_DRM_KEY, &crypto_data_size);
+            SDL_AMediaCodec_CryptoInfo_fill(crypto_data, crypto_data_size, &crypto_info, copy_size);
+            amc_ret = SDL_AMediaCodec_queueSecureInputBuffer(opaque->acodec, input_buffer_index, 0, crypto_info, time_stamp, queue_flags);
+        }
         if (amc_ret != SDL_AMEDIA_OK) {
             ALOGE("%s: SDL_AMediaCodec_getInputBuffer failed\n", __func__);
             ret = -1;
@@ -710,6 +803,8 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
     ssize_t  copy_size          = 0;
     int64_t  time_stamp         = 0;
     uint32_t queue_flags        = 0;
+    int      is_encrypted       = 0;
+    int      is_drm_info_updated= 0;
 
     if (enqueue_count)
         *enqueue_count = 0;
@@ -881,7 +976,32 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
 #endif
     }
 
+    if (ffp->is_drm_source) {
+        is_encrypted = (d->pkt_temp.flags & AV_PKT_FLAG_ENCRYPTED) ? 1 : 0;
+        is_drm_info_updated = (d->pkt_temp.flags & AV_PKT_FLAG_DRM_INIT_INFO) ? 1 : 0;
+    }
+
     if (d->pkt_temp.data) {
+        if (is_drm_info_updated) {
+            int session_state = 0;
+            if ((session_state = ffp_update_drm_init_info2(ffp, &d->pkt_temp, 1)) <= 0) {
+                ALOGE("%s: ffp_update_drm_init_info2 error\n", __func__);
+                ret = -1;
+                goto fail;
+            } else if (session_state != DRM_SESSION_LOADED) {
+                ALOGW("%s: waiting for drm key loaded\n", __func__);
+            }
+            while (session_state != DRM_SESSION_LOADED &&
+                    ffpipeline_get_drm_session_state_l(ffp->pipeline, 1, 0) != DRM_SESSION_LOADED) {
+                if (q->abort_request) {
+                    ALOGI("%s: abort request when loading drm key\n", __func__);
+                    ret = -1;
+                    goto fail;
+                }
+                av_usleep(10 * 1000);
+            }
+        }
+
         // reconfigure surface if surface changed
         // NULL surface cause no display
         if (ffpipeline_is_surface_need_reconfigure_l(pipeline)) {
@@ -939,6 +1059,25 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
                 }
             }
         }
+        if (is_drm_info_updated && !opaque->acodec_has_configure_crypto) {
+            jobject new_surface = NULL;
+
+            // request reconfigure before lock, or never get mutex
+            ffpipeline_lock_surface(pipeline);
+            new_surface = ffpipeline_get_surface_as_global_ref_l(env, pipeline);
+            ffpipeline_unlock_surface(pipeline);
+
+            ret = reconfigure_codec_l(env, node, new_surface);
+
+            J4A_DeleteGlobalRef__p(env, &new_surface);
+
+            if (ret != 0) {
+                ALOGE("%s: reconfigure_codec failed\n", __func__);
+                ret = 0;
+                goto fail;
+            }
+            ALOGI("%s: reconfigure_codec for new crypto\n", __func__);
+        }
 
 #if 0
         // no need to decode without surface
@@ -979,8 +1118,26 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
         } else {
             time_stamp = 0;
         }
+
         // ALOGE("queueInputBuffer, %lld\n", time_stamp);
-        amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, copy_size, time_stamp, queue_flags);
+        if (!is_encrypted) {
+            amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, copy_size, time_stamp, queue_flags);
+        } else {
+            if (!opaque->crypto_info) {
+                opaque->crypto_info = SDL_AMediaCodec_CryptoInfo_new();
+            }
+            SDL_AMediaCodecCryptoInfo *crypto_info = opaque->crypto_info;
+            if (!crypto_info) {
+                ALOGE("%s: crypto_info is invalid\n", __func__);
+                ret = -1;
+                goto fail;
+            }
+            uint8_t  *crypto_data      = NULL;
+            int       crypto_data_size = 0;
+            crypto_data = av_packet_get_side_data(&d->pkt_temp, AV_PKT_DATA_DRM_KEY, &crypto_data_size);
+            SDL_AMediaCodec_CryptoInfo_fill(crypto_data, crypto_data_size, &crypto_info, copy_size);
+            amc_ret = SDL_AMediaCodec_queueSecureInputBuffer(opaque->acodec, input_buffer_index, 0, crypto_info, time_stamp, queue_flags);
+        }
         if (amc_ret != SDL_AMEDIA_OK) {
             ALOGE("%s: SDL_AMediaCodec_getInputBuffer failed\n", __func__);
             ret = -1;
@@ -1151,6 +1308,7 @@ static int drain_output_buffer_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t time
 
         goto done;
     } else if (output_buffer_index >= 0) {
+        ffp->stat.v_decode_frame_count++;
         ffp->stat.vdps = SDL_SpeedSamplerAdd(&opaque->sampler, FFP_SHOW_VDPS_MEDIACODEC, "vdps[MediaCodec]");
 
         if (dequeue_count)
@@ -1321,6 +1479,7 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
     } else if (output_buffer_index < 0) {
         return 0;
     } else if (output_buffer_index >= 0) {
+        ffp->stat.v_decode_frame_count++;
         ffp->stat.vdps = SDL_SpeedSamplerAdd(&opaque->sampler, FFP_SHOW_VDPS_MEDIACODEC, "vdps[MediaCodec]");
 
         if (dequeue_count)
@@ -1424,6 +1583,7 @@ static void func_destroy(IJKFF_Pipenode *node)
     SDL_AMediaCodec_decreaseReferenceP(&opaque->acodec);
     SDL_AMediaFormat_deleteP(&opaque->input_aformat);
     SDL_AMediaFormat_deleteP(&opaque->output_aformat);
+    SDL_AMediaCodec_CryptoInfo_deleteP(&opaque->crypto_info);
 
 #if AMC_USE_AVBITSTREAM_FILTER
     av_freep(&opaque->orig_extradata);
@@ -1605,7 +1765,8 @@ static int func_run_sync(IJKFF_Pipenode *node)
             ALOGE("Rapid decode_frame_sucessed----got_frame = %d\n",got_frame);
             if (got_frame) {
                 decode_frame_sucessed = true;
-            } else if (decode_frame_error_count++ > 10) {
+            } else if (decode_frame_error_count++ > 10 && !ffp->is_drm_source) {
+                // DRM stream is hard to decode first frame after try 10 times.
                 ALOGE("Rapid decode_frame_error_count-----\n");
                 ret = -2;
                 goto fail;
@@ -1764,7 +1925,7 @@ int ffpipenode_config_from_android_mediacodec(FFPlayer *ffp, IJKFF_Pipeline *pip
                 ALOGW("%s: MediaCodec: H264_CAVLC_444: disabled\n", __func__);
                 goto fail;
             default:
-                ALOGW("%s: MediaCodec: (%d) unknown profile: disabled\n", __func__, opaque->codecpar->profile);
+                ALOGW("%s: Rapid MediaCodec: (%d) unknown profile: disabled\n", __func__, opaque->codecpar->profile);
                 goto fail;
         }
         strcpy(opaque->mcc.mime_type, SDL_AMIME_VIDEO_AVC);
@@ -1998,7 +2159,7 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_android_mediacodec(FFPlayer
                 ALOGW("%s: MediaCodec: H264_CAVLC_444: disabled\n", __func__);
                 goto fail;
             default:
-                ALOGW("%s: MediaCodec: (%d) unknown profile: disabled\n", __func__, opaque->codecpar->profile);
+                ALOGW("%s: Rapid MediaCodec: (%d) unknown profile: disabled\n", __func__, opaque->codecpar->profile);
                 goto fail;
         }
         strcpy(opaque->mcc.mime_type, SDL_AMIME_VIDEO_AVC);
@@ -2067,6 +2228,13 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_android_mediacodec(FFPlayer
 
     if (!ffpipeline_select_mediacodec_l(pipeline, &opaque->mcc) || !opaque->mcc.codec_name[0]) {
         ALOGE("amc: no suitable codec\n");
+        goto fail;
+    }
+
+    if ((0 == strncasecmp(opaque->mcc.codec_name, "OMX.rk.video_decoder.", 21)) &&
+            (opaque->codecpar->width <= 0 || opaque->codecpar->height <= 0) &&
+            opaque->codecpar->profile == -99 && opaque->codecpar->level == -99) {
+        ALOGE("amc: android framework will crash when width or height is 0\n");
         goto fail;
     }
 

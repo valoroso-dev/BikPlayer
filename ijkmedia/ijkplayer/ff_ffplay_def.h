@@ -189,7 +189,7 @@ typedef struct PacketQueue {
 } PacketQueue;
 
 // #define VIDEO_PICTURE_QUEUE_SIZE 3
-#define VIDEO_PICTURE_QUEUE_SIZE_MIN        (3)
+#define VIDEO_PICTURE_QUEUE_SIZE_MIN        (2)
 #define VIDEO_PICTURE_QUEUE_SIZE_MAX        (16)
 #define VIDEO_PICTURE_QUEUE_SIZE_DEFAULT    (VIDEO_PICTURE_QUEUE_SIZE_MIN)
 #define SUBPICTURE_QUEUE_SIZE 16
@@ -286,6 +286,8 @@ typedef struct Decoder {
 typedef struct VideoState {
     SDL_Thread *read_tid;
     SDL_Thread _read_tid;
+    SDL_Thread *stat_tid;
+    SDL_Thread _stat_tid;
     AVInputFormat *iformat;
     int abort_request;
     int force_refresh;
@@ -431,6 +433,12 @@ typedef struct VideoState {
     SDL_cond  *audio_accurate_seek_cond;
     volatile int initialized_decoder;
     int seek_buffering;
+    double sim_bit_rate;
+
+    Uint64 player_startup_time;
+    // startup timestamp
+    int64_t sla_timestamp[9];
+    int64_t high_buffering_count;
 } VideoState;
 
 /* options specified by the user */
@@ -500,6 +508,11 @@ typedef struct FFTrackCacheStatistic
     int64_t duration;
     int64_t bytes;
     int64_t packets;
+    int64_t realpackets;
+    int64_t first_pts;
+    int64_t last_pts;
+    int64_t start_pts;
+    double stat_dutation;
 } FFTrackCacheStatistic;
 
 typedef struct FFStatistic
@@ -529,7 +542,28 @@ typedef struct FFStatistic
     int drop_frame_count;
     int decode_frame_count;
     float drop_frame_rate;
+    long read_frame_count;
+    long v_read_frame_count;
+    long a_read_frame_count;
+    long s_read_frame_count;
+    long v_decode_frame_count;
+    long a_decode_frame_count;
+    long s_decode_frame_count;
+    long v_decode_block_count;
+    long last_pause_timestamp;
+    long last_pause_pos;
+    long last_resume_pos;
 } FFStatistic;
+
+typedef struct FFWatchState
+{
+    int64_t first_audio_pts;
+    uint8_t* first_audio_data;
+    int audio_block_count;
+    int video_block_count;
+    int no_audio_count;
+    int no_video_count;
+} FFWatchState;
 
 #define FFP_TCP_READ_SAMPLE_RANGE 2000
 inline static void ffp_reset_statistic(FFStatistic *dcc)
@@ -690,6 +724,7 @@ typedef struct FFPlayer {
     int mediacodec_mpeg4;
     int mediacodec_handle_resolution_change;
     int mediacodec_auto_rotate;
+    int mediacodec_naked_csd;
 
     int opensles;
     int soundtouch_enable;
@@ -736,6 +771,23 @@ typedef struct FFPlayer {
 
     int live_quick_start;
     int find_stream_keyframe_ok;
+    int fast_check_buffering;
+    int is_drm_source;
+    int index_drm_first;
+    char *drm_info;
+    int drm_flag;
+    SDL_mutex  *drm_info_mutex;
+#if defined(__ANDROID__)
+    struct AVMediaCodecContext *adec_user_ctx;
+#endif
+    int enable_ijkplaylist;
+    int check_no_pkt_recv;
+    int check_video_block;
+    int check_audio_block;
+    int high_buffering_interval;
+    int audio_write_policy;
+    int dfl_sample_rate;
+    int dfl_nb_channels;
 } FFPlayer;
 
 #define fftime_to_milliseconds(ts) (av_rescale(ts, 1000, AV_TIME_BASE))
@@ -762,7 +814,7 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->seek_by_bytes          = -1;
     ffp->display_disable        = 0;
     ffp->show_status            = 0;
-    ffp->av_sync_type           = AV_SYNC_AUDIO_MASTER;
+    ffp->av_sync_type           = AV_SYNC_AUDIO_MASTER;// option;
     ffp->start_time             = AV_NOPTS_VALUE;
     ffp->duration               = AV_NOPTS_VALUE;
     ffp->fast                   = 1;
@@ -846,6 +898,8 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->mediacodec_default_name        = NULL; // option
     ffp->ijkmeta_delay_init             = 0; // option
     ffp->render_wait_start              = 0;
+    ffp->index_drm_first                = 0; // option
+    ffp->high_buffering_interval        = 0; // option
 
     ijkmeta_reset(ffp->meta);
 
@@ -860,6 +914,13 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->pf_playback_volume             = 1.0f;
     ffp->pf_playback_volume_changed     = 0;
 
+    ffp->check_no_pkt_recv              = 5;
+    ffp->check_video_block              = 5;
+    ffp->check_audio_block              = 3;
+
+    ffp->dfl_sample_rate                = 44100;
+    ffp->dfl_nb_channels                = 2;
+
     av_application_closep(&ffp->app_ctx);
     ijkio_manager_destroyp(&ffp->ijkio_manager_ctx);
 
@@ -871,8 +932,68 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp_reset_demux_cache_control(&ffp->dcc);
 }
 
+inline static void print_ijk_startup_msg(const char *msg, Uint64 start) {
+    ALOGI("[IJKSTARTUP] %s %"PRId64"ms\n", msg, (SDL_GetTickHR() - start));
+}
+inline static void report_startup_info(FFPlayer *ffp)
+{
+    //when video render ,report data
+    char buff[256] = {0};
+    snprintf(buff,256,"{open_input:%lld, audio_first_frame:%lld, video_first_frame:%lld, find_streaminfo:%lld, component_open:%lld, "
+                      "audio_decode:%lld, audio_render:%lld, video_decode:%lld, video_render:%lld}",ffp->is->sla_timestamp[0],
+                       ffp->is->sla_timestamp[2],ffp->is->sla_timestamp[1],ffp->is->sla_timestamp[3],ffp->is->sla_timestamp[4],
+                       ffp->is->sla_timestamp[5],ffp->is->sla_timestamp[7],ffp->is->sla_timestamp[6],ffp->is->sla_timestamp[8]);
+    ALOGI("[sla] %s \n", buff);
+    msg_queue_put_simple4(&ffp->msg_queue, FFP_MSG_STARTUP_INFO, 0, 0, buff, (int)strlen(buff) + 1);
+}
 inline static void ffp_notify_msg1(FFPlayer *ffp, int what) {
     msg_queue_put_simple3(&ffp->msg_queue, what, 0, 0);
+    if (ffp->is) {
+        switch(what) {
+            case FFP_MSG_OPEN_INPUT:
+                print_ijk_startup_msg("FFP_MSG_OPEN_INPUT", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[0] = 0;
+                break;
+            case FFP_MSG_READ_FIRST_VIDEO_FRAME:
+                print_ijk_startup_msg("FFP_MSG_READ_FIRST_VIDEO_FRAME", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[1] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+            case FFP_MSG_READ_FIRST_AUDIO_FRAME:
+                print_ijk_startup_msg("FFP_MSG_READ_FIRST_AUDIO_FRAME", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[2] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+            case FFP_MSG_FIND_STREAM_INFO:
+                print_ijk_startup_msg("FFP_MSG_FIND_STREAM_INFO", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[3] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+            case FFP_MSG_COMPONENT_OPEN:
+                print_ijk_startup_msg("FFP_MSG_COMPONENT_OPEN", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[4] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+            case FFP_MSG_AUDIO_DECODED_START:
+                print_ijk_startup_msg("FFP_MSG_AUDIO_DECODED_START", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[5] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+            case FFP_MSG_VIDEO_DECODED_START:
+                print_ijk_startup_msg("FFP_MSG_VIDEO_DECODED_START", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[6] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+            case FFP_MSG_AUDIO_RENDERING_START:
+                print_ijk_startup_msg("FFP_MSG_AUDIO_RENDERING_START", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[7] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                if (ffp->is->video_stream >=0 && ffp->first_video_frame_rendered) {
+                    report_startup_info(ffp);
+                }
+                break;
+            case FFP_MSG_VIDEO_RENDERING_START:
+                print_ijk_startup_msg("FFP_MSG_VIDEO_RENDERING_START", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[8] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                if (ffp->is->audio_stream >=0 && ffp->first_audio_frame_rendered) {
+                    report_startup_info(ffp);
+                }
+                break;
+        }
+    }
 }
 
 inline static void ffp_notify_msg2(FFPlayer *ffp, int what, int arg1) {
@@ -905,7 +1026,13 @@ inline static const char *ffp_get_error_string(int error) {
 
 #define FFTRACE ALOGW
 
-#define AVCODEC_MODULE_NAME    "avcodec"
-#define MEDIACODEC_MODULE_NAME "MediaCodec"
+#define AVCODEC_MODULE_NAME      "avcodec"
+#define MEDIACODEC_MODULE_NAME   "MediaCodec"
+#define VIDEOTOOLBOX_MODULE_NAME "VideoToolBox"
+
+#define DRM_SESSION_UNKNOWN   0
+#define DRM_SESSION_WAITING   1
+#define DRM_SESSION_LOADING   2
+#define DRM_SESSION_LOADED    3
 
 #endif
