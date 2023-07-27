@@ -17,6 +17,7 @@
 
 package tv.danmaku.ijk.media.example.widget.media;
 
+import tv.danmaku.ijk.media.exo.IjkExoMediaPlayer;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.MediaPlayerProxy;
@@ -55,9 +56,13 @@ public class MediaPlayerCompat {
 
     public static void selectTrack(IMediaPlayer mp, int stream) {
         IjkMediaPlayer ijkMediaPlayer = getIjkMediaPlayer(mp);
-        if (ijkMediaPlayer == null)
+        if (ijkMediaPlayer != null) {
+            ijkMediaPlayer.selectTrack(stream);
             return;
-        ijkMediaPlayer.selectTrack(stream);
+        }
+        if (mp instanceof IjkExoMediaPlayer) {
+            ((IjkExoMediaPlayer) mp).selectTrack(stream);
+        }
     }
 
     public static void deselectTrack(IMediaPlayer mp, int stream) {

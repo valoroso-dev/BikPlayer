@@ -54,6 +54,8 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
     private String mVideoPath;
     private Uri    mVideoUri;
+    private String mLicenseUrl;
+    private String mLicenseToken;
 
     private AndroidMediaController mMediaController;
     private IjkVideoView mVideoView;
@@ -65,15 +67,25 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     private Settings mSettings;
     private boolean mBackPressed;
 
-    public static Intent newIntent(Context context, String videoPath, String videoTitle) {
+    public static Intent newIntent(Context context, String videoPath, String videoTitle, String licenseUrl, String licenseToken) {
         Intent intent = new Intent(context, VideoActivity.class);
         intent.putExtra("videoPath", videoPath);
         intent.putExtra("videoTitle", videoTitle);
+        if (!TextUtils.isEmpty(licenseUrl)) {
+            intent.putExtra("licenseUrl", licenseUrl);
+        }
+        if (!TextUtils.isEmpty(licenseToken)) {
+            intent.putExtra("licenseToken", licenseToken);
+        }
         return intent;
     }
 
     public static void intentTo(Context context, String videoPath, String videoTitle) {
-        context.startActivity(newIntent(context, videoPath, videoTitle));
+        context.startActivity(newIntent(context, videoPath, videoTitle, null, null));
+    }
+
+    public static void intentTo(Context context, String videoPath, String licenseUrl, String licenseToken, String videoTitle) {
+        context.startActivity(newIntent(context, videoPath, videoTitle, licenseUrl, licenseToken));
     }
 
     @Override
@@ -85,6 +97,12 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         // handle arguments
         mVideoPath = getIntent().getStringExtra("videoPath");
+        if (mVideoPath == null) {
+            processCmdlineStart();
+            return;
+        }
+        mLicenseUrl = getIntent().getStringExtra("licenseUrl");
+        mLicenseToken = getIntent().getStringExtra("licenseToken");
 
         Intent intent = getIntent();
         String intentAction = intent.getAction();
@@ -140,6 +158,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         mVideoView = (IjkVideoView) findViewById(R.id.video_view);
         mVideoView.setMediaController(mMediaController);
+        mVideoView.setHudView(mHudView);
         // prefer mVideoPath
         if (mVideoPath != null)
             mVideoView.setVideoPath(mVideoPath);
@@ -150,9 +169,53 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             finish();
             return;
         }
-        if (mSettings.getPlayer()==Settings.PV_PLAYER__IjkMediaPlayer) {
-            mVideoView.setHudView(mHudView);
+        if (!TextUtils.isEmpty(mLicenseUrl)) {
+            mVideoView.setDrmInfo(mLicenseUrl, mLicenseToken);
         }
+        mVideoView.start();
+    }
+    private void processCmdlineStart() {
+
+        Uri intenturi = getIntent().getData();
+        if (intenturi == null) {
+            Log.d(TAG, "get datauri from intent fail");
+            return;
+        }
+        String p = intenturi.getQueryParameter("p");
+        //0: auto 1:nuplayer 2: ijkplayer 3:exoplayer
+        int playertype = p!=null ? Integer.parseInt(p):2;
+        String d = intenturi.getQueryParameter("d");
+        //0: non 1: goose 2:iredo 3:widevine 4:fairplay 5:playready
+        int drmptype = d!=null ? Integer.parseInt(d):2;
+        String u = intenturi.getQueryParameter("url");
+        String url= u!=null ? u : "";
+        Log.d(TAG, "para is " + playertype + "&" + drmptype + "&" + url);
+        // load ijkplayer library
+        IjkMediaPlayer.loadLibrariesOnce(null);
+        IjkMediaPlayer.native_profileBegin("libijkplayer.so");
+
+        // init UI
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        ActionBar actionBar = getSupportActionBar();
+        mMediaController = new AndroidMediaController(this, false);
+        mMediaController.setSupportActionBar(actionBar);
+
+        mToastTextView = (TextView) findViewById(R.id.toast_text_view);
+        mHudView = (TableLayout) findViewById(R.id.hud_view);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        mRightDrawer = (ViewGroup) findViewById(R.id.right_drawer);
+
+        mVideoView = (IjkVideoView) findViewById(R.id.video_view);
+        mVideoView.setMediaController(mMediaController);
+        mVideoView.setHudView(mHudView);
+
+        mDrawerLayout.setScrimColor(Color.TRANSPARENT);
+
+        mVideoUri = Uri.parse(url);
+        mVideoView.setPlayertype(playertype);
+        mVideoView.setVideoURI(mVideoUri);
         mVideoView.start();
     }
 
