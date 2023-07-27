@@ -27,6 +27,7 @@ REQUEST_SUB_CMD=$2
 ACT_ABI_32="armv5 armv7a x86"
 ACT_ABI_64="armv5 armv7a arm64 x86 x86_64"
 ACT_ABI_ALL=$ACT_ABI_64
+ACT_ABI_ARM="armv7a arm64"
 UNAME_S=$(uname -s)
 
 FF_MAKEFLAGS=
@@ -107,6 +108,12 @@ case "$REQUEST_TARGET" in
             do_ndk_build "$ABI" $REQUEST_SUB_CMD;
         done
     ;;
+    arm)
+        for ABI in $ACT_ABI_ARM
+        do
+            do_ndk_build "$ABI" $REQUEST_SUB_CMD;
+        done
+    ;;
     clean)
         for ABI in $ACT_ABI_ALL
         do
@@ -117,6 +124,7 @@ case "$REQUEST_TARGET" in
         echo "Usage:"
         echo "  compile-ijk.sh armv5|armv7a|arm64|x86|x86_64"
         echo "  compile-ijk.sh all|all32"
+        echo "  compile-ijk.sh arm"
         echo "  compile-ijk.sh all64"
         echo "  compile-ijk.sh clean"
     ;;
