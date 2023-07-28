@@ -97,10 +97,6 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         // handle arguments
         mVideoPath = getIntent().getStringExtra("videoPath");
-        if (mVideoPath == null) {
-            processCmdlineStart();
-            return;
-        }
         mLicenseUrl = getIntent().getStringExtra("licenseUrl");
         mLicenseToken = getIntent().getStringExtra("licenseToken");
 
@@ -158,7 +154,6 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         mVideoView = (IjkVideoView) findViewById(R.id.video_view);
         mVideoView.setMediaController(mMediaController);
-        mVideoView.setHudView(mHudView);
         // prefer mVideoPath
         if (mVideoPath != null)
             mVideoView.setVideoPath(mVideoPath);
@@ -169,53 +164,12 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
             finish();
             return;
         }
+        if (mSettings.getPlayer()==Settings.PV_PLAYER__IjkMediaPlayer) {
+            mVideoView.setHudView(mHudView);
+        }
         if (!TextUtils.isEmpty(mLicenseUrl)) {
             mVideoView.setDrmInfo(mLicenseUrl, mLicenseToken);
         }
-        mVideoView.start();
-    }
-    private void processCmdlineStart() {
-
-        Uri intenturi = getIntent().getData();
-        if (intenturi == null) {
-            Log.d(TAG, "get datauri from intent fail");
-            return;
-        }
-        String p = intenturi.getQueryParameter("p");
-        //0: auto 1:nuplayer 2: ijkplayer 3:exoplayer
-        int playertype = p!=null ? Integer.parseInt(p):2;
-        String d = intenturi.getQueryParameter("d");
-        //0: non 1: goose 2:iredo 3:widevine 4:fairplay 5:playready
-        int drmptype = d!=null ? Integer.parseInt(d):2;
-        String u = intenturi.getQueryParameter("url");
-        String url= u!=null ? u : "";
-        Log.d(TAG, "para is " + playertype + "&" + drmptype + "&" + url);
-        // load ijkplayer library
-        IjkMediaPlayer.loadLibrariesOnce(null);
-        IjkMediaPlayer.native_profileBegin("libijkplayer.so");
-
-        // init UI
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
-        ActionBar actionBar = getSupportActionBar();
-        mMediaController = new AndroidMediaController(this, false);
-        mMediaController.setSupportActionBar(actionBar);
-
-        mToastTextView = (TextView) findViewById(R.id.toast_text_view);
-        mHudView = (TableLayout) findViewById(R.id.hud_view);
-        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-        mRightDrawer = (ViewGroup) findViewById(R.id.right_drawer);
-
-        mVideoView = (IjkVideoView) findViewById(R.id.video_view);
-        mVideoView.setMediaController(mMediaController);
-        mVideoView.setHudView(mHudView);
-
-        mDrawerLayout.setScrimColor(Color.TRANSPARENT);
-
-        mVideoUri = Uri.parse(url);
-        mVideoView.setPlayertype(playertype);
-        mVideoView.setVideoURI(mVideoUri);
         mVideoView.start();
     }
 
