@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-IJK_XML2_UPSTREAM=https://github.com/GNOME/libxml2.git
-IJK_XML2_FORK=https://github.com/GNOME/libxml2.git
+IJK_XML2_UPSTREAM=https://github.com/valoroso-dev/libxml2.git
+IJK_XML2_FORK=https://github.com/valoroso-dev/libxml2.git
 IJK_XML2_COMMIT=v2.9.12
 IJK_XML2_LOCAL_REPO=extra/libxml2
 

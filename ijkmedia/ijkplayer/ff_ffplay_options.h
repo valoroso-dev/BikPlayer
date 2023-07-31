@@ -226,7 +226,7 @@ static const AVOption ffp_context_options[] = {
     {"check-video-block",                  "check if video is blocked for a long time",
         OPTION_OFFSET(check_video_block),   OPTION_INT(5, 0, INT_MAX) },
     {"check-audio-block",                  "check if audio is blocked for a long time",
-        OPTION_OFFSET(check_audio_block),   OPTION_INT(3, 0, INT_MAX) },
+        OPTION_OFFSET(check_audio_block),   OPTION_INT(0, 0, INT_MAX) },
     {"high-buffering-interval",             "notify high buffering msg every interval",
         OPTION_OFFSET(high_buffering_interval),   OPTION_INT(10, 0, INT_MAX) },
     { "audio-write-policy",             "audiotrack write policy",

@@ -579,16 +579,16 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
                      */
                     if (getWindowToken() != null) {
                         Resources r = mAppContext.getResources();
-                        int messageId;
+                        String message;
 
                         if (framework_err == MediaPlayer.MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK) {
-                            messageId = R.string.VideoView_error_text_invalid_progressive_playback;
+                            message = getResources().getString(R.string.VideoView_error_text_invalid_progressive_playback);
                         } else {
-                            messageId = R.string.VideoView_error_text_unknown;
+                            message = "Error: " + framework_err + "," + impl_err;
                         }
 
                         new AlertDialog.Builder(getContext())
-                                .setMessage(messageId)
+                                .setMessage(message)
                                 .setPositiveButton(R.string.VideoView_error_button,
                                         new DialogInterface.OnClickListener() {
                                             public void onClick(DialogInterface dialog, int whichButton) {
@@ -619,7 +619,9 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         @Override
         public void onSeekComplete(IMediaPlayer mp) {
             mSeekEndTime = System.currentTimeMillis();
-            mHudViewHolder.updateSeekCost(mSeekEndTime - mSeekStartTime);
+            if (mHudViewHolder != null) {
+                mHudViewHolder.updateSeekCost(mSeekEndTime - mSeekStartTime);
+            }
         }
     };
 
