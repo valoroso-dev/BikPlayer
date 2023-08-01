@@ -41,6 +41,19 @@ typedef struct SDL_AMediaCodecBufferInfo {
     uint32_t flags;
 } SDL_AMediaCodecBufferInfo;
 
+typedef struct SDL_AMediaCodecCryptoInfo {
+    int8_t *iv;
+    int32_t ivLength;
+    int8_t *key;
+    int32_t keyLength;
+    int32_t mode;
+    int32_t *numBytesOfClearData;
+    int32_t *numBytesOfEncryptedData;
+    uint32_t numSubSamples;
+    uint8_t encryptBlocks;
+    uint8_t skipBlocks;
+} SDL_AMediaCodecCryptoInfo;
+
 typedef struct SDL_AMediaFormat             SDL_AMediaFormat;
 typedef struct SDL_AMediaCrypto             SDL_AMediaCrypto;
 
@@ -83,6 +96,7 @@ typedef struct SDL_AMediaCodec
 
     ssize_t                 (*func_dequeueInputBuffer)(SDL_AMediaCodec* acodec, int64_t timeoutUs);
     sdl_amedia_status_t     (*func_queueInputBuffer)(SDL_AMediaCodec* acodec, size_t idx, off_t offset, size_t size, uint64_t time, uint32_t flags);
+    sdl_amedia_status_t     (*func_queueSecureInputBuffer)(SDL_AMediaCodec* acodec, size_t idx, off_t offset, SDL_AMediaCodecCryptoInfo *info, uint64_t time, uint32_t flags);
 
     ssize_t                 (*func_dequeueOutputBuffer)(SDL_AMediaCodec* acodec, SDL_AMediaCodecBufferInfo *info, int64_t timeoutUs);
     SDL_AMediaFormat*       (*func_getOutputFormat)(SDL_AMediaCodec* acodec);
@@ -123,6 +137,7 @@ ssize_t                 SDL_AMediaCodec_writeInputData(SDL_AMediaCodec* acodec, 
 
 ssize_t                 SDL_AMediaCodec_dequeueInputBuffer(SDL_AMediaCodec* acodec, int64_t timeoutUs);
 sdl_amedia_status_t     SDL_AMediaCodec_queueInputBuffer(SDL_AMediaCodec* acodec, size_t idx, off_t offset, size_t size, uint64_t time, uint32_t flags);
+sdl_amedia_status_t     SDL_AMediaCodec_queueSecureInputBuffer(SDL_AMediaCodec* acodec, size_t idx, off_t offset, SDL_AMediaCodecCryptoInfo *info, uint64_t time, uint32_t flags);
 
 ssize_t                 SDL_AMediaCodec_dequeueOutputBuffer(SDL_AMediaCodec* acodec, SDL_AMediaCodecBufferInfo *info, int64_t timeoutUs);
 SDL_AMediaFormat*       SDL_AMediaCodec_getOutputFormat(SDL_AMediaCodec* acodec);
@@ -139,5 +154,9 @@ void                    SDL_AMediaCodecFake_flushFakeFrames(SDL_AMediaCodec* aco
 sdl_amedia_status_t     SDL_AMediaCodecFake_queueFakeFrame(SDL_AMediaCodec* acodec, size_t idx, off_t offset, size_t size, uint64_t time, uint32_t flags);
 ssize_t                 SDL_AMediaCodecFake_dequeueOutputBuffer(SDL_AMediaCodec* acodec, SDL_AMediaCodecBufferInfo *info, int64_t timeoutUs);
 ssize_t                 SDL_AMediaCodecFake_dequeueFakeFrameOnly(SDL_AMediaCodec* acodec, SDL_AMediaCodecBufferInfo *info, int64_t timeoutUs);
+
+SDL_AMediaCodecCryptoInfo* SDL_AMediaCodec_CryptoInfo_new();
+int                     SDL_AMediaCodec_CryptoInfo_deleteP(SDL_AMediaCodecCryptoInfo **crypto_info);
+int                     SDL_AMediaCodec_CryptoInfo_fill(uint8_t *key_data, uint32_t key_data_size, SDL_AMediaCodecCryptoInfo **crypto_info, uint32_t av_data_len);
 
 #endif

@@ -25,6 +25,10 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+
+#include "ijkplayer/ff_ffmsg.h"
+#include "ijkplayer/ff_ffplay_def.h"
+#include "ijkplayer/android/ijkplayer_android_def.h"
 #include "ijksdl_inc_internal.h"
 #include "ijksdl_thread.h"
 #ifdef __ANDROID__
@@ -39,6 +43,11 @@ static void *SDL_RunThread(void *data)
     ALOGI("SDL_RunThread: [%d] %s\n", (int)gettid(), thread->name);
     pthread_setname_np(pthread_self(), thread->name);
     thread->retval = thread->func(thread->data);
+
+    ALOGI("Rapid SDL_RunThread: [%d] %s\n", thread->retval,thread->name);
+    if (thread->retval == -2 && strcmp(thread->name,"ff_video_dec") == 0) {
+        ffp_notify_msg2(thread->data, FFP_MSG_ERROR, FFP_ERROR_VIDEO_DECODER_OPEN_ERROR);
+    }
 #ifdef __ANDROID__
     SDL_JNI_DetachThreadEnv();
 #endif

@@ -60,4 +60,9 @@ FOUNDATION_EXPORT const unsigned char IJKMediaFrameworkVersionString[];
 #define IJKMPMoviePlayerAccurateSeekCompleteNotification IJKMPMoviePlayerAccurateSeekCompleteNotification
 #define IJKMoviePlayerSeekAudioStartNotification IJKMPMoviePlayerSeekAudioStartNotification
 #define IJKMoviePlayerSeekVideoStartNotification IJKMPMoviePlayerSeekVideoStartNotification
+#define IJKMoviePlayerStartupInfoNotification IJKMPMoviePlayerStartupInfoNotification
 
+#define IJK_ERROR_AUDIO_NOT_CONSUME               998
+#define IJK_ERROR_VIDEO_DECODER_OPEN_ERROR        999
+#define IJK_ERROR_NO_AUDIO_RECV                   10002
+#define IJK_ERROR_NO_VIDEO_RECV                   10003

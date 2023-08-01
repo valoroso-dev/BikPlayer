@@ -26,6 +26,7 @@
 #include "ffpipeline_ios.h"
 #include <mach/mach_time.h>
 #include "libavformat/avc.h"
+#include "libavformat/hevc.h"
 #include "ijksdl_vout_ios_gles2.h"
 #include "h264_sps_parser.h"
 #include "ijkplayer/ff_ffplay_debug.h"
@@ -432,6 +433,7 @@ static void VTDecoderCallback(void *decompressionOutputRefCon,
             if (newFrame->pic.pts != AV_NOPTS_VALUE)
                 dpts = av_q2d(is->video_st->time_base) * newFrame->pic.pts;
 
+            ffp->stat.v_decode_frame_count++;
             if (ffp->framedrop>0 || (ffp->framedrop && ffp_get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) {
                 ffp->stat.decode_frame_count++;
                 if (newFrame->pic.pts != AV_NOPTS_VALUE) {
@@ -1060,6 +1062,7 @@ static int vtbformat_init(VTBFormatDesc *fmt_desc, AVCodecParameters *codecpar)
         case FF_PROFILE_H264_HIGH_444_PREDICTIVE:
         case FF_PROFILE_H264_HIGH_444_INTRA:
         case FF_PROFILE_H264_CAVLC_444:
+            ALOGI("%s - unsupport profile %d\n", __FUNCTION__, profile);
             goto failed;
     }
 #endif
@@ -1082,6 +1085,7 @@ static int vtbformat_init(VTBFormatDesc *fmt_desc, AVCodecParameters *codecpar)
                 isHevcSupported = false;
             }
             if (!isHevcSupported) {
+                ALOGI("%s - device not support hevc\n", __FUNCTION__);
                 goto fail;
             }
             break;
@@ -1095,55 +1099,62 @@ static int vtbformat_init(VTBFormatDesc *fmt_desc, AVCodecParameters *codecpar)
     }
     
     if (extradata[0] == 1) {
-//                if (!validate_avcC_spc(extradata, extrasize, &fmt_desc->max_ref_frames, &sps_level, &sps_profile)) {
-            //goto failed;
-//                }
+//        if (!validate_avcC_spc(extradata, extrasize, &fmt_desc->max_ref_frames, &sps_level, &sps_profile)) {
+//            goto fail;
+//        }
         if (level == 0 && sps_level > 0)
             level = sps_level;
 
-                if (profile == 0 && sps_profile > 0)
-                    profile = sps_profile;
-                if (profile == FF_PROFILE_H264_MAIN && level == 32 && fmt_desc->max_ref_frames > 4) {
-                    ALOGE("%s - Main@L3.2 detected, VTB cannot decode with %d ref frames", __FUNCTION__, fmt_desc->max_ref_frames);
-                    goto fail;
-                }
+        if (profile == 0 && sps_profile > 0)
+            profile = sps_profile;
+        if (profile == FF_PROFILE_H264_MAIN && level == 32 && fmt_desc->max_ref_frames > 4) {
+            ALOGE("%s - Main@L3.2 detected, VTB cannot decode with %d ref frames", __FUNCTION__, fmt_desc->max_ref_frames);
+            goto fail;
+        }
 
-                if (extradata[4] == 0xFE) {
-                    extradata[4] = 0xFF;
-                    fmt_desc->convert_3byteTo4byteNALSize = true;
-                }
+        if (extradata[4] == 0xFE) {
+            extradata[4] = 0xFF;
+            fmt_desc->convert_3byteTo4byteNALSize = true;
+        }
 
         fmt_desc->fmt_desc = CreateFormatDescriptionFromCodecData(format_id, width, height, extradata, extrasize,  IJK_VTB_FCC_AVCC);
         if (fmt_desc->fmt_desc == NULL) {
             goto fail;
         }
 
-                ALOGI("%s - using avcC atom of size(%d), ref_frames(%d)", __FUNCTION__, extrasize, fmt_desc->max_ref_frames);
+        ALOGI("%s - using avcC atom of size(%d), ref_frames(%d)", __FUNCTION__, extrasize, fmt_desc->max_ref_frames);
+    } else {
+        if ((extradata[0] == 0 && extradata[1] == 0 && extradata[2] == 0 && extradata[3] == 1) ||
+                (extradata[0] == 0 && extradata[1] == 0 && extradata[2] == 1)) {
+            AVIOContext *pb;
+            if (avio_open_dyn_buf(&pb) < 0) {
+                goto fail;
+            }
+
+            fmt_desc->convert_bytestream = true;
+            if (format_id == kCMVideoCodecType_HEVC) {
+                ff_isom_write_hvcc(pb, extradata, extrasize, 0);
             } else {
-                if ((extradata[0] == 0 && extradata[1] == 0 && extradata[2] == 0 && extradata[3] == 1) ||
-                    (extradata[0] == 0 && extradata[1] == 0 && extradata[2] == 1)) {
-                    AVIOContext *pb;
-                    if (avio_open_dyn_buf(&pb) < 0) {
-                        goto fail;
-                    }
+                ff_isom_write_avcc(pb, extradata, extrasize);
+            }
+            extradata = NULL;
 
-                    fmt_desc->convert_bytestream = true;
-                    ff_isom_write_avcc(pb, extradata, extrasize);
-                    extradata = NULL;
+            extrasize = avio_close_dyn_buf(pb, &extradata);
 
-                    extrasize = avio_close_dyn_buf(pb, &extradata);
-
-                    if (!validate_avcC_spc(extradata, extrasize, &fmt_desc->max_ref_frames, &sps_level, &sps_profile)) {
-                        av_free(extradata);
-                        goto fail;
-                    }
+            if (format_id == kCMVideoCodecType_H264 && !validate_avcC_spc(extradata, extrasize, &fmt_desc->max_ref_frames, &sps_level, &sps_profile)) {
+                av_free(extradata);
+                ALOGI("%s - second case invalid extradata\n", __FUNCTION__);
+                goto fail;
+            }
 
             fmt_desc->fmt_desc = CreateFormatDescriptionFromCodecData(format_id, width, height, extradata, extrasize, IJK_VTB_FCC_AVCC);
             if (fmt_desc->fmt_desc == NULL) {
+                ALOGI("%s - second case fmt desc fail", __FUNCTION__);
                 goto fail;
             }
 
             av_free(extradata);
+            ALOGI("%s - second case using avcC atom of size(%d), ref_frames(%d)", __FUNCTION__, extrasize, fmt_desc->max_ref_frames);
         } else {
             ALOGI("%s - invalid avcC atom data", __FUNCTION__);
             goto fail;
@@ -1191,14 +1202,18 @@ Ijk_VideoToolBox_Opaque* videotoolbox_async_create(FFPlayer* ffp, AVCodecContext
     context_vtb->idr_based_identified = true;
 
     ret = vtbformat_init(&context_vtb->fmt_desc, context_vtb->codecpar);
-    if (ret)
+    if (ret) {
+        ALOGI("%s vtbformat_init fail\n", __FUNCTION__);
         goto fail;
+    }
     assert(context_vtb->fmt_desc.fmt_desc);
     vtbformat_destroy(&context_vtb->fmt_desc);
 
     context_vtb->vt_session = vtbsession_create(context_vtb);
-    if (context_vtb->vt_session == NULL)
+    if (context_vtb->vt_session == NULL) {
+        ALOGI("%s vtbsession_create fail\n", __FUNCTION__);
         goto fail;
+    }
 
     context_vtb->m_sort_queue = 0;
     context_vtb->m_queue_depth = 0;

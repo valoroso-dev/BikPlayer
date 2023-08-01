@@ -98,6 +98,9 @@ jfieldID J4A_GetStaticFieldID__catchAll(JNIEnv *env, jclass clazz, const char *f
 jbyteArray J4A_NewByteArray__catchAll(JNIEnv *env, jsize capacity);
 jbyteArray J4A_NewByteArray__asGlobalRef__catchAll(JNIEnv *env, jsize capacity);
 
+jintArray J4A_NewIntArray__catchAll(JNIEnv *env, jsize capacity);
+jintArray J4A_NewIntArray__asGlobalRef__catchAll(JNIEnv *env, jsize capacity);
+
 int J4A_GetSystemAndroidApiLevel(JNIEnv *env);
 
 #endif//J4A_INTERNAL_H

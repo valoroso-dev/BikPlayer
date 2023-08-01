@@ -25,6 +25,36 @@ You can experience quick-to-play, media file formats support by the demo APK pro
   - Optimized startup cost time for ts format (h.264&h.265 encoding)
   - Update backend Exoplayer to v2.17.1
 
+### Download
+
+ Platform | Build Status
+ -------- | ------------
+ Android | [![Build Status](https://jitpack.io/v/valoroso-dev/BikPlayerLib.svg)](https://jitpack.io/#valoroso-dev/BikPlayerLib)
+
+- Android:
+ - Gradle
+```
+# required
+allprojects {
+    repositories {
+        maven { url 'https://www.jitpack.io' }
+    }
+}
+
+dependencies {
+    # required, enough for most devices.
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-java:1.3.0'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-common:1.3.0'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.0'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-arm64:1.3.0'
+
+    # ExoPlayer as IMediaPlayer: optional, experimental
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-exo:1.3.0'
+}
+```
+- iOS
+ - in coming...
+
 ### How to build
   - [build for Android](doc/build_android.md) (include FFmpeg / BikPlayer)
   - build for Android by CMake using Android Studio
@@ -32,7 +62,7 @@ You can experience quick-to-play, media file formats support by the demo APK pro
 
 
 ### Try Android Demo
--  [Android Apk](https://github.com/valoroso-dev/BikPlayer/blob/master/demo/BikPlayer.apk)
+-  [Android Apk](https://github.com/valoroso-dev/BikPlayerLib/blob/master/BikPlayer.apk)
 
 ![android demo](doc/android_demo.png)
 

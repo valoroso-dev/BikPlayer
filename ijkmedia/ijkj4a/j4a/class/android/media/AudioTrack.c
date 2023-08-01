@@ -35,6 +35,7 @@ typedef struct J4AC_android_media_AudioTrack {
     jmethodID method_flush;
     jmethodID method_release;
     jmethodID method_write;
+    jmethodID method_write23;
     jmethodID method_setStereoVolume;
     jmethodID method_getAudioSessionId;
     jmethodID method_getPlaybackParams;
@@ -204,6 +205,21 @@ jint J4AC_android_media_AudioTrack__write(JNIEnv *env, jobject thiz, jbyteArray 
 jint J4AC_android_media_AudioTrack__write__catchAll(JNIEnv *env, jobject thiz, jbyteArray audioData, jint offsetInBytes, jint sizeInBytes)
 {
     jint ret_value = J4AC_android_media_AudioTrack__write(env, thiz, audioData, offsetInBytes, sizeInBytes);
+    if (J4A_ExceptionCheck__catchAll(env)) {
+        return 0;
+    }
+
+    return ret_value;
+}
+
+jint J4AC_android_media_AudioTrack__write23(JNIEnv *env, jobject thiz, jbyteArray audioData, jint offsetInBytes, jint sizeInBytes, jint writeMode)
+{
+    return (*env)->CallIntMethod(env, thiz, class_J4AC_android_media_AudioTrack.method_write23, audioData, offsetInBytes, sizeInBytes, writeMode);
+}
+
+jint J4AC_android_media_AudioTrack__write23__catchAll(JNIEnv *env, jobject thiz, jbyteArray audioData, jint offsetInBytes, jint sizeInBytes, jint writeMode)
+{
+    jint ret_value = J4AC_android_media_AudioTrack__write23(env, thiz, audioData, offsetInBytes, sizeInBytes, writeMode);
     if (J4A_ExceptionCheck__catchAll(env)) {
         return 0;
     }
@@ -439,6 +455,15 @@ int J4A_loadClass__J4AC_android_media_AudioTrack(JNIEnv *env)
     class_J4AC_android_media_AudioTrack.method_write = J4A_GetMethodID__catchAll(env, class_id, name, sign);
     if (class_J4AC_android_media_AudioTrack.method_write == NULL)
         goto fail;
+
+    if (J4A_GetSystemAndroidApiLevel(env) >= 23) {
+        class_id = class_J4AC_android_media_AudioTrack.id;
+        name     = "write";
+        sign     = "([BIII)I";
+        class_J4AC_android_media_AudioTrack.method_write23 = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+        if (class_J4AC_android_media_AudioTrack.method_write23 == NULL)
+            goto fail;
+    }
 
     class_id = class_J4AC_android_media_AudioTrack.id;
     name     = "setStereoVolume";

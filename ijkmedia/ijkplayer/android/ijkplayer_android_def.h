@@ -40,7 +40,6 @@ enum media_event_type {
     MEDIA_TIMED_TEXT        = 99,       // not supported yet
     MEDIA_ERROR             = 100,      // arg1, arg2
     MEDIA_INFO              = 200,      // arg1, arg2
-    MEDIA_VIDEO_DECODER_OPEN_ERROR = 999,
 
     MEDIA_SET_VIDEO_SAR     = 10001,    // arg1 = sar.num, arg2 = sar.den
 };
@@ -130,6 +129,8 @@ enum media_info_type {
 
     //9xx
     MEDIA_INFO_TIMED_TEXT_ERROR = 900,
+    MEDIA_INFO_STREAM_INFO_SUMMARY = 903,
+    MEDIA_INFO_STARTUP_INFO = 904,
 
     //100xx
     MEDIA_INFO_VIDEO_ROTATION_CHANGED = 10001,
@@ -141,6 +142,8 @@ enum media_info_type {
     MEDIA_INFO_COMPONENT_OPEN         = 10007,
     MEDIA_INFO_VIDEO_SEEK_RENDERING_START = 10008,
     MEDIA_INFO_AUDIO_SEEK_RENDERING_START = 10009,
+    MEDIA_INFO_READ_FIRST_VIDEO_FRAME = 10010,
+    MEDIA_INFO_READ_FIRST_AUDIO_FRAME = 10011,
 
     MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE = 10100,
 };

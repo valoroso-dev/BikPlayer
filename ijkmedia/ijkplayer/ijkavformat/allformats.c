@@ -88,5 +88,8 @@ void ijkav_register_all(void)
     /* demuxers */
     IJK_REGISTER_DEMUXER(ijklivehook);
     IJK_REGISTER_DEMUXER(ijklas);
+#ifdef __ANDROID__
+    IJK_REGISTER_DEMUXER(ijkplaylist);
+#endif
     av_log(NULL, AV_LOG_INFO, "===== custom modules end =====\n");
 }

@@ -19,7 +19,7 @@
 # IJK_FFMPEG_UPSTREAM=git://git.videolan.org/ffmpeg.git
 IJK_FFMPEG_UPSTREAM=https://github.com/valoroso-dev/FFmpeg.git
 IJK_FFMPEG_FORK=https://github.com/valoroso-dev/FFmpeg.git
-IJK_FFMPEG_COMMIT=6516d5fcd17108c754734ceba51c30206b5b93d2
+IJK_FFMPEG_COMMIT=ff4.0.6--ijk1.3.0--20230731--001
 IJK_FFMPEG_LOCAL_REPO=extra/ffmpeg
 
 set -e

@@ -2,6 +2,7 @@ package tv.danmaku.ijk.media.player;
 
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -25,6 +26,7 @@ public class IjkMediaMeta {
     public static final String IJKM_VAL_TYPE__TIMEDTEXT = "timedtext";
     public static final String IJKM_VAL_TYPE__UNKNOWN = "unknown";
     public static final String IJKM_KEY_LANGUAGE = "language";
+    public static final String IJKM_KEY_SELECTED = "selected";
 
     public static final String IJKM_KEY_CODEC_NAME = "codec_name";
     public static final String IJKM_KEY_CODEC_PROFILE = "codec_profile";

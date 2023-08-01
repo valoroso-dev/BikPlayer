@@ -51,10 +51,12 @@ esac
 #--------------------
 # common defines
 FF_ARCH=$1
+FF_BUILD_OPT=$2
 if [ -z "$FF_ARCH" ]; then
     echo "You must specific an architecture 'armv7, armv7s, arm64, i386, x86_64, ...'.\n"
     exit 1
 fi
+FF_BUILD_SIMULATOR=$FF_BUILD_OPT
 
 
 FF_BUILD_ROOT=`pwd`
@@ -112,7 +114,12 @@ elif [ "$FF_ARCH" = "armv7s" ]; then
     OPENSSL_CFG_FLAGS="$OPENSSL_CFG_FLAGS_ARM $OPENSSL_CFG_FLAGS"
 elif [ "$FF_ARCH" = "arm64" ]; then
     FF_BUILD_NAME="openssl-arm64"
-    FF_XCRUN_OSVERSION="-miphoneos-version-min=7.0"
+    if [ "$FF_BUILD_SIMULATOR" = "simulator" ]; then
+        FF_XCRUN_PLATFORM="iPhoneSimulator"
+        FF_XCRUN_OSVERSION="-mios-simulator-version-min=7.0"
+    else
+        FF_XCRUN_OSVERSION="-miphoneos-version-min=7.0"
+    fi
     FF_XCODE_BITCODE="-fembed-bitcode"
     OPENSSL_CFG_FLAGS="$OPENSSL_CFG_FLAGS_ARM $OPENSSL_CFG_FLAGS"
     FF_GASPP_EXPORT="GASPP_FIX_XCODE5=1"

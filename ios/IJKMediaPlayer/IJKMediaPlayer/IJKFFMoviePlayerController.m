@@ -239,10 +239,11 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
 
         ijkmp_ios_set_glview(_mediaPlayer, _glView);
         ijkmp_set_option(_mediaPlayer, IJKMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");
+        ijkmp_set_option_int(_mediaPlayer, IJKMP_OPT_CATEGORY_FORMAT, "live_start_index", -3);
 #ifdef DEBUG
         [IJKFFMoviePlayerController setLogLevel:k_IJK_LOG_DEBUG];
 #else
-        [IJKFFMoviePlayerController setLogLevel:k_IJK_LOG_SILENT];
+        [IJKFFMoviePlayerController setLogLevel:k_IJK_LOG_INFO];
 #endif
         // init audio sink
         [[IJKAudioKit sharedInstance] setupAudioSession];
@@ -342,10 +343,11 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         ijkmp_ios_set_glview(_mediaPlayer, _glView);
 
         ijkmp_set_option(_mediaPlayer, IJKMP_OPT_CATEGORY_PLAYER, "overlay-format", "fcc-_es2");
+        ijkmp_set_option_int(_mediaPlayer, IJKMP_OPT_CATEGORY_FORMAT, "live_start_index", -3);
 #ifdef DEBUG
         [IJKFFMoviePlayerController setLogLevel:k_IJK_LOG_DEBUG];
 #else
-        [IJKFFMoviePlayerController setLogLevel:k_IJK_LOG_SILENT];
+        [IJKFFMoviePlayerController setLogLevel:k_IJK_LOG_INFO];
 #endif
         // init audio sink
         [[IJKAudioKit sharedInstance] setupAudioSession];
@@ -514,7 +516,13 @@ inline static int getPlayerOption(IJKFFOptionCategory category)
 
 + (void)setLogLevel:(IJKLogLevel)logLevel
 {
+    NSLog(@"IJKMEDIA: setLogLevel logLevel=%d\n", logLevel);
     ijkmp_global_set_log_level(logLevel);
+}
+
++ (NSString *)playerVersion {
+    const char *actualVersion = ijkmp_version();
+    return [NSString stringWithUTF8String:actualVersion];
 }
 
 + (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert;
@@ -1116,6 +1124,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
                             } else if (0 == strcmp(type, IJKM_VAL_TYPE__AUDIO)) {
                                 fillMetaInternal(streamMeta, streamRawMeta, IJKM_KEY_SAMPLE_RATE, nil);
                                 fillMetaInternal(streamMeta, streamRawMeta, IJKM_KEY_CHANNEL_LAYOUT, nil);
+                                fillMetaInternal(streamMeta, streamRawMeta, IJKM_KEY_LANGUAGE, nil);
 
                                 if (audio_stream == i) {
                                     _monitor.audioMeta = streamMeta;
@@ -1317,6 +1326,15 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
              postNotificationName:IJKMPMoviePlayerSeekAudioStartNotification
              object:self];
             _isAudioSync = 0;
+            break;
+        }
+        case FFP_MSG_STARTUP_INFO: {
+            NSLog(@"FFP_MSG_STARTUP_INFO:\n");
+            char *startupInfo = (char *)avmsg->obj;
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:IJKMPMoviePlayerStartupInfoNotification
+             object:self
+             userInfo:@{IJKMPMoviePlayerStartupInfoKey: [NSString stringWithUTF8String:startupInfo]}];
             break;
         }
         default:
@@ -1676,6 +1694,16 @@ static int ijkff_inject_callback(void *opaque, int message, void *data, size_t d
 - (void)setPlayerOptionIntValue:(int64_t)value forKey:(NSString *)key
 {
     [self setOptionIntValue:value forKey:key ofCategory:kIJKFFOptionCategoryPlayer];
+}
+
+- (void)setAudioTrack:(int)stream selected:(int)selected
+{
+    ijkmp_set_stream_selected(_mediaPlayer, stream, selected);
+}
+
+- (int64_t)getPropertyInt64:(int)nameId defaultValue:(int64_t)value
+{
+    return ijkmp_get_property_int64(_mediaPlayer, nameId, value);
 }
 
 - (void)setMaxBufferSize:(int)maxBufferSize

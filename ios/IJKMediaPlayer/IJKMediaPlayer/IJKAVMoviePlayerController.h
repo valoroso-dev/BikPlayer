@@ -69,8 +69,16 @@
  */
 
 #import "IJKMediaPlayback.h"
+#import <AVFoundation/AVFoundation.h>
 
 @interface IJKAVMoviePlayerController : NSObject <IJKMediaPlayback>
+
+@property(atomic, readonly) AVURLAsset *playAsset;
+@property(atomic, readonly) AVPlayerItem *playerItem;
+
+- (id)setFairPlayCertificate:(NSString *)certificateUrl
+      fpsLicensingServiceUrl:(NSString *)licensingServiceUrl
+                   fpsParams:(NSDictionary *)params;
 
 - (id)initWithContentURL:(NSURL *)aUrl;
 - (id)initWithContentURLString:(NSString *)aUrl;

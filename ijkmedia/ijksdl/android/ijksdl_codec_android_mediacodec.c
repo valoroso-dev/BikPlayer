@@ -178,6 +178,12 @@ sdl_amedia_status_t SDL_AMediaCodec_queueInputBuffer(SDL_AMediaCodec* acodec, si
     return acodec->func_queueInputBuffer(acodec, idx, offset, size, time, flags);
 }
 
+sdl_amedia_status_t SDL_AMediaCodec_queueSecureInputBuffer(SDL_AMediaCodec* acodec, size_t idx, off_t offset, SDL_AMediaCodecCryptoInfo *info, uint64_t time, uint32_t flags)
+{
+    assert(acodec->func_queueSecureInputBuffer);
+    return acodec->func_queueSecureInputBuffer(acodec, idx, offset, info, time, flags);
+}
+
 ssize_t SDL_AMediaCodec_dequeueOutputBuffer(SDL_AMediaCodec* acodec, SDL_AMediaCodecBufferInfo *info, int64_t timeoutUs)
 {
     assert(acodec->func_dequeueOutputBuffer);
@@ -291,4 +297,80 @@ ssize_t SDL_AMediaCodecFake_dequeueOutputBuffer(SDL_AMediaCodec* acodec, SDL_AMe
 ssize_t SDL_AMediaCodecFake_dequeueFakeFrameOnly(SDL_AMediaCodec* acodec, SDL_AMediaCodecBufferInfo *info, int64_t timeoutUs)
 {
     return SDL_AMediaCodec_FakeFifo_dequeueOutputBuffer(&acodec->common->fake_fifo, info, 0);
+}
+
+SDL_AMediaCodecCryptoInfo* SDL_AMediaCodec_CryptoInfo_new()
+{
+    SDL_AMediaCodecCryptoInfo *crypto_info;
+    crypto_info = mallocz(sizeof(SDL_AMediaCodecCryptoInfo));
+    crypto_info->ivLength = 16;
+    crypto_info->iv = mallocz(crypto_info->ivLength);
+    crypto_info->keyLength = 16;
+    crypto_info->key = mallocz(crypto_info->keyLength);
+    crypto_info->numSubSamples = 0;
+    ALOGW("%s(): crypto_info=%p\n", __func__, crypto_info);
+    return crypto_info;
+}
+
+int SDL_AMediaCodec_CryptoInfo_deleteP(SDL_AMediaCodecCryptoInfo **input_crypto)
+{
+    if (!input_crypto || !(*input_crypto))
+        return SDL_AMEDIA_OK;
+    SDL_AMediaCodecCryptoInfo *crypto_info = *input_crypto;
+    ALOGW("%s(): crypto_info=%p\n", __func__, crypto_info);
+    freep((void**)&crypto_info->iv);
+    freep((void**)&crypto_info->key);
+    freep((void**)&crypto_info->numBytesOfClearData);
+    freep((void**)&crypto_info->numBytesOfEncryptedData);
+    freep((void**)input_crypto);
+    *input_crypto = NULL;
+    return SDL_AMEDIA_OK;
+}
+
+int SDL_AMediaCodec_CryptoInfo_fill(uint8_t *key_data, uint32_t key_data_size, SDL_AMediaCodecCryptoInfo **crypto_info, uint32_t av_data_len)
+{
+    SDL_AMediaCodecCryptoInfo *out = *crypto_info;
+    uint32_t subsample_count;
+    uint8_t iv_size = key_data[0] & 0x7F;
+    uint8_t is_encrypted = key_data[0] & 0x80;
+    uint8_t scheme_type= key_data[1];
+    uint8_t default_crypto_byte_block = key_data[2];
+    uint8_t default_skip_byte_block = key_data[3];
+    key_data += 4;
+
+    if (scheme_type == 1/*cenc*/ || scheme_type == 3/*cens*/) {
+        out->mode = 1;//MediaCodec#CryptoInfo#CRYPTO_MODE_AES_CTR
+    } else if (scheme_type == 2/*cbc1*/ || scheme_type == 4/*cbcs*/) {
+        out->mode = 2;//MediaCodec#CryptoInfo#CRYPTO_MODE_AES_CBC
+    } else {
+        out->mode = 0;//MediaCodec#CryptoInfo#CRYPTO_MODE_UNENCRYPTED
+    }
+    out->encryptBlocks = default_crypto_byte_block;
+    out->skipBlocks = default_skip_byte_block;
+
+    memset(out->iv, 0, out->ivLength);
+    memcpy(out->iv, key_data, iv_size);
+    key_data += iv_size;
+
+    subsample_count = ((key_data[0] << 8) | (key_data[1]));
+    key_data += 2;
+
+    if (subsample_count > out->numSubSamples) {
+        freep((void**)&out->numBytesOfClearData);
+        freep((void**)&out->numBytesOfEncryptedData);
+        out->numBytesOfClearData = mallocz(subsample_count * sizeof(int32_t));
+        out->numBytesOfEncryptedData = mallocz(subsample_count * sizeof(int32_t));
+    }
+    out->numSubSamples = subsample_count;
+
+    for (int i = 0; i < subsample_count; i++) {
+        out->numBytesOfClearData[i] = ((key_data[0] << 8) | (key_data[1]));
+        out->numBytesOfEncryptedData[i] = (((unsigned)(key_data[2]) << 24) | ((key_data[3]) << 16) | ((key_data[4]) << 8) | (key_data[5]));
+        key_data += 6;
+    }
+
+    memset(out->key, 0, out->keyLength);
+    memcpy(out->key, key_data, out->keyLength);
+
+    return SDL_AMEDIA_OK;
 }

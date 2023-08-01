@@ -164,6 +164,8 @@ IJK_EXTERN NSString *const IJKMPMoviePlayerDidAccurateSeekCompleteCurPos;
 IJK_EXTERN NSString *const IJKMPMoviePlayerAccurateSeekCompleteNotification;
 IJK_EXTERN NSString *const IJKMPMoviePlayerSeekAudioStartNotification;
 IJK_EXTERN NSString *const IJKMPMoviePlayerSeekVideoStartNotification;
+IJK_EXTERN NSString *const IJKMPMoviePlayerStartupInfoNotification;
+IJK_EXTERN NSString *const IJKMPMoviePlayerStartupInfoKey;
 
 @end
 

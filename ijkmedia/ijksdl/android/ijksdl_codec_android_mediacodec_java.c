@@ -112,7 +112,7 @@ static sdl_amedia_status_t SDL_AMediaCodecJava_configure_surface(
     SDL_AMediaCodec_Opaque *opaque = (SDL_AMediaCodec_Opaque *)acodec->opaque;
     jobject android_media_format = SDL_AMediaFormatJava_getObject(env, aformat);
     jobject android_media_codec  = SDL_AMediaCodecJava_getObject(env, acodec);
-    ALOGE("configure acodec:%p format:%p: surface:%p", android_media_codec, android_media_format, android_surface);
+    ALOGE("configure acodec:%p format:%p: surface:%p crypto:%p", android_media_codec, android_media_format, android_surface, crypto);
     J4AC_MediaCodec__configure(env, android_media_codec, android_media_format, android_surface, crypto, flags);
     if (J4A_ExceptionCheck__catchAll(env)) {
         return SDL_AMEDIA_ERROR_UNKNOWN;
@@ -259,6 +259,62 @@ ssize_t SDL_AMediaCodecJava_dequeueInputBuffer(SDL_AMediaCodec* acodec, int64_t 
     return idx;
 }
 
+sdl_amedia_status_t SDL_AMediaCodecJava_queueSecureInputBuffer(SDL_AMediaCodec* acodec, size_t idx, off_t offset, SDL_AMediaCodecCryptoInfo* info, uint64_t time, uint32_t flags)
+{
+    AMCTRACE("%s: %d", __func__, (int)idx);
+
+    JNIEnv *env = NULL;
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
+        ALOGE("SDL_AMediaCodecJava_queueInputBuffer: SetupThreadEnv failed");
+        return SDL_AMEDIA_ERROR_UNKNOWN;
+    }
+
+    SDL_AMediaCodec_Opaque *opaque = (SDL_AMediaCodec_Opaque *)acodec->opaque;
+    jobject android_media_codec = opaque->android_media_codec;
+
+    jobject adnroid_media_crypto_info = J4AC_MediaCodec__CryptoInfo__CryptoInfo(env);
+    if (!adnroid_media_crypto_info)
+        return AMEDIACODEC__UNKNOWN_ERROR;
+
+    jintArray numBytesOfClearData = J4A_NewIntArray__catchAll(env, info->numSubSamples);
+    (*env)->SetIntArrayRegion(env, numBytesOfClearData, 0, info->numSubSamples, info->numBytesOfClearData);
+    jintArray numBytesOfEncryptedData = J4A_NewIntArray__catchAll(env, info->numSubSamples);
+    (*env)->SetIntArrayRegion(env, numBytesOfEncryptedData, 0, info->numSubSamples, info->numBytesOfEncryptedData);
+    jbyteArray iv = J4A_NewByteArray__catchAll(env, info->ivLength);
+    (*env)->SetByteArrayRegion(env, iv, 0, info->ivLength, info->iv);
+    jbyteArray key = J4A_NewByteArray__catchAll(env, info->keyLength);
+    (*env)->SetByteArrayRegion(env, key, 0, info->keyLength, info->key);
+    J4AC_MediaCodec__CryptoInfo__set__catchAll(env, adnroid_media_crypto_info, info->numSubSamples, numBytesOfClearData, numBytesOfEncryptedData, key, iv, info->mode);
+
+    jobject adnroid_media_crypto_pattern = NULL;
+    if (J4A_GetSystemAndroidApiLevel(env) >= 24 && (info->encryptBlocks || info->skipBlocks)) {
+        adnroid_media_crypto_pattern = J4AC_MediaCodec__CryptoInfo__Pattern__Pattern(env, info->encryptBlocks, info->skipBlocks);
+        if (!adnroid_media_crypto_pattern)
+            return AMEDIACODEC__UNKNOWN_ERROR;
+        J4AC_MediaCodec__CryptoInfo__setPattern__catchAll(env, adnroid_media_crypto_info, adnroid_media_crypto_pattern);
+    }
+
+    // jstring cryptoInfoString = J4AC_MediaCodec__CryptoInfo__toString__catchAll(env, adnroid_media_crypto_info);
+    // const char* c_str = (*env)->GetStringUTFChars(env, cryptoInfoString, NULL);
+    // ALOGD("SDL_AMediaCodecJava_queueSecureInputBuffer %lld cryptoInfoString: '%s'", time, c_str);
+    // J4A_ReleaseStringUTFChars__p(env, cryptoInfoString, &c_str);
+    // J4A_DeleteLocalRef__p(env, &cryptoInfoString);
+
+    J4AC_MediaCodec__queueSecureInputBuffer(env, android_media_codec, (jint)idx, (jint)offset, adnroid_media_crypto_info, (jlong)time, (jint)flags);
+
+    J4A_DeleteLocalRef__p(env, &numBytesOfClearData);
+    J4A_DeleteLocalRef__p(env, &numBytesOfEncryptedData);
+    J4A_DeleteLocalRef__p(env, &iv);
+    J4A_DeleteLocalRef__p(env, &key);
+    J4A_DeleteLocalRef__p(env, &adnroid_media_crypto_pattern);
+    J4A_DeleteLocalRef__p(env, &adnroid_media_crypto_info);
+    if (J4A_ExceptionCheck__catchAll(env)) {
+        return SDL_AMEDIA_ERROR_UNKNOWN;
+    }
+
+    return SDL_AMEDIA_OK;
+}
+
 sdl_amedia_status_t SDL_AMediaCodecJava_queueInputBuffer(SDL_AMediaCodec* acodec, size_t idx, off_t offset, size_t size, uint64_t time, uint32_t flags)
 {
     AMCTRACE("%s: %d", __func__, (int)idx);
@@ -382,6 +438,7 @@ static SDL_AMediaCodec* SDL_AMediaCodecJava_init(JNIEnv *env, jobject android_me
 
     acodec->func_dequeueInputBuffer     = SDL_AMediaCodecJava_dequeueInputBuffer;
     acodec->func_queueInputBuffer       = SDL_AMediaCodecJava_queueInputBuffer;
+    acodec->func_queueSecureInputBuffer = SDL_AMediaCodecJava_queueSecureInputBuffer;
 
     acodec->func_dequeueOutputBuffer    = SDL_AMediaCodecJava_dequeueOutputBuffer;
     acodec->func_getOutputFormat        = SDL_AMediaCodecJava_getOutputFormat;

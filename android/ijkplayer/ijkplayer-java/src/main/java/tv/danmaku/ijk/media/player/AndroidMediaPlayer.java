@@ -346,11 +346,15 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
         mInternalMediaPlayer.setOnInfoListener(mInternalListenerAdapter);
         mInternalMediaPlayer.setOnTimedTextListener(mInternalListenerAdapter);
     }
-            
+
     @Override
-    public final void setTrack(int trackType, int trackId){}
+    public final void setTrack(int trackType, int trackId) {
+    }
+
     @Override
-    public final int getCurrentTrack(int trackType){return -1;}
+    public final int getCurrentTrack(int trackType) {
+        return -1;
+    }
 
     private class AndroidMediaPlayerListenerHolder implements
             MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener,
@@ -368,7 +372,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
         @Override
         public boolean onInfo(MediaPlayer mp, int what, int extra) {
             AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            return self != null && notifyOnInfo(what, extra);
+            return self != null && notifyOnInfo(what, extra, "");
 
         }
 

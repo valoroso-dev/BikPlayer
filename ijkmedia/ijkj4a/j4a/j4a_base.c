@@ -260,6 +260,26 @@ jbyteArray J4A_NewByteArray__asGlobalRef__catchAll(JNIEnv *env, jsize capacity)
     return global;
 }
 
+jintArray J4A_NewIntArray__catchAll(JNIEnv *env, jsize capacity)
+{
+    jintArray local = (*env)->NewIntArray(env, capacity);
+    if (J4A_ExceptionCheck__catchAll(env) || !local)
+        return NULL;
+
+    return local;
+}
+
+jintArray J4A_NewIntArray__asGlobalRef__catchAll(JNIEnv *env, jsize capacity)
+{
+    jintArray local = (*env)->NewIntArray(env, capacity);
+    if (J4A_ExceptionCheck__catchAll(env) || !local)
+        return NULL;
+
+    jintArray global = (*env)->NewGlobalRef(env, local);
+    J4A_DeleteLocalRef__p(env, &local);
+    return global;
+}
+
 int J4A_GetSystemAndroidApiLevel(JNIEnv *env)
 {
     static int SDK_INT = 0;

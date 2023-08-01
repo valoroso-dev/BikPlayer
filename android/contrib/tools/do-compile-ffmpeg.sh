@@ -76,13 +76,7 @@ FF_GCC_64_VER=$IJK_GCC_64_VER
 
 #----- armv7a begin -----
 if [ "$FF_ARCH" = "armv7a" ]; then
-    FF_BUILD_NAME=ffmpeg-armv7a
-    FF_BUILD_NAME_OPENSSL=openssl-armv7a
-    FF_BUILD_NAME_LIBSOXR=libsoxr-armv7a
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-
     FF_CROSS_PREFIX=arm-linux-androideabi
-    FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
 
     FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=arm --cpu=cortex-a8"
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-neon"
@@ -94,13 +88,7 @@ if [ "$FF_ARCH" = "armv7a" ]; then
     FF_ASSEMBLER_SUB_DIRS="arm"
 
 elif [ "$FF_ARCH" = "armv5" ]; then
-    FF_BUILD_NAME=ffmpeg-armv5
-    FF_BUILD_NAME_OPENSSL=openssl-armv5
-    FF_BUILD_NAME_LIBSOXR=libsoxr-armv5
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-
     FF_CROSS_PREFIX=arm-linux-androideabi
-    FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
 
     FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=arm"
 
@@ -110,13 +98,7 @@ elif [ "$FF_ARCH" = "armv5" ]; then
     FF_ASSEMBLER_SUB_DIRS="arm"
 
 elif [ "$FF_ARCH" = "x86" ]; then
-    FF_BUILD_NAME=ffmpeg-x86
-    FF_BUILD_NAME_OPENSSL=openssl-x86
-    FF_BUILD_NAME_LIBSOXR=libsoxr-x86
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-
     FF_CROSS_PREFIX=i686-linux-android
-    FF_TOOLCHAIN_NAME=x86-${FF_GCC_VER}
 
     FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=x86 --cpu=i686 --enable-yasm"
 
@@ -128,13 +110,8 @@ elif [ "$FF_ARCH" = "x86" ]; then
 elif [ "$FF_ARCH" = "x86_64" ]; then
     FF_ANDROID_PLATFORM=android-21
 
-    FF_BUILD_NAME=ffmpeg-x86_64
-    FF_BUILD_NAME_OPENSSL=openssl-x86_64
-    FF_BUILD_NAME_LIBSOXR=libsoxr-x86_64
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-
     FF_CROSS_PREFIX=x86_64-linux-android
-    FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
+    FF_GCC_VER=${FF_GCC_64_VER}
 
     FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=x86_64 --enable-yasm"
 
@@ -146,13 +123,8 @@ elif [ "$FF_ARCH" = "x86_64" ]; then
 elif [ "$FF_ARCH" = "arm64" ]; then
     FF_ANDROID_PLATFORM=android-21
 
-    FF_BUILD_NAME=ffmpeg-arm64
-    FF_BUILD_NAME_OPENSSL=openssl-arm64
-    FF_BUILD_NAME_LIBSOXR=libsoxr-arm64
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-
     FF_CROSS_PREFIX=aarch64-linux-android
-    FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
+    FF_GCC_VER=${FF_GCC_64_VER}
 
     FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=aarch64 --enable-yasm"
 
@@ -175,6 +147,28 @@ if [ ! -d $FF_SOURCE ]; then
     exit 1
 fi
 
+FF_BUILD_NAME="ffmpeg-${FF_ARCH}"
+FF_BUILD_NAME_OPENSSL="openssl-${FF_ARCH}"
+FF_BUILD_NAME_LIBSOXR="libsoxr-${FF_ARCH}"
+FF_BUILD_NAME_XML2="libxml2-${FF_ARCH}"
+FF_SOURCE=${FF_BUILD_ROOT}/${FF_BUILD_NAME}
+
+FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
+if [ "$FF_ARCH" = "x86" ]; then
+    FF_TOOLCHAIN_NAME=x86-${FF_GCC_VER}
+fi
+
+cd $FF_SOURCE
+ffversion=`./ffbuild/version.sh`
+mainversion=${ffversion%.*}
+export ISFF5=0
+if [ "$mainversion" = "ff5" ]; then
+    echo "Using ffmpeg5.X"
+    export ISFF5=1
+    FF_ANDROID_PLATFORM=android-16
+fi
+cd ..
+
 FF_TOOLCHAIN_PATH=$FF_BUILD_ROOT/build/$FF_BUILD_NAME/toolchain
 FF_MAKE_TOOLCHAIN_FLAGS="$FF_MAKE_TOOLCHAIN_FLAGS --install-dir=$FF_TOOLCHAIN_PATH"
 
@@ -184,6 +178,9 @@ FF_DEP_OPENSSL_INC=$FF_BUILD_ROOT/build/$FF_BUILD_NAME_OPENSSL/output/include
 FF_DEP_OPENSSL_LIB=$FF_BUILD_ROOT/build/$FF_BUILD_NAME_OPENSSL/output/lib
 FF_DEP_LIBSOXR_INC=$FF_BUILD_ROOT/build/$FF_BUILD_NAME_LIBSOXR/output/include
 FF_DEP_LIBSOXR_LIB=$FF_BUILD_ROOT/build/$FF_BUILD_NAME_LIBSOXR/output/lib
+FF_DEP_XML2_INC=$FF_BUILD_ROOT/build/$FF_BUILD_NAME_XML2/output/include
+FF_DEP_XML2_LIB=$FF_BUILD_ROOT/build/$FF_BUILD_NAME_XML2/output/lib
+
 
 case "$UNAME_S" in
     CYGWIN_NT-*)
@@ -258,6 +255,14 @@ if [ -f "${FF_DEP_LIBSOXR_LIB}/libsoxr.a" ]; then
     FF_DEP_LIBS="$FF_DEP_LIBS -L${FF_DEP_LIBSOXR_LIB} -lsoxr"
 fi
 
+if [ -f "${FF_DEP_XML2_LIB}/libxml2.a" ]; then
+    echo "libxml2 detected"
+    export PKG_CONFIG_PATH=$FF_DEP_XML2_LIB/pkgconfig
+    FF_CFLAGS="$FF_CFLAGS -I${FF_DEP_XML2_INC}"
+    FF_DEP_LIBS="$FF_DEP_LIBS -L${FF_DEP_XML2_LIB}  -lxml2 -lm"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --pkg_config=pkg-config"
+fi
+
 FF_CFG_FLAGS="$FF_CFG_FLAGS $COMMON_FF_CFG_FLAGS"
 
 #--------------------
@@ -267,7 +272,7 @@ FF_CFG_FLAGS="$FF_CFG_FLAGS --prefix=$FF_PREFIX"
 # Advanced options (experts only):
 FF_CFG_FLAGS="$FF_CFG_FLAGS --cross-prefix=${FF_CROSS_PREFIX}-"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-cross-compile"
-FF_CFG_FLAGS="$FF_CFG_FLAGS --target-os=linux"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --target-os=android"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-pic"
 # FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-symver"
 
@@ -307,7 +312,6 @@ else
         --extra-ldflags="$FF_DEP_LIBS $FF_EXTRA_LDFLAGS"
     make clean
 fi
-
 #--------------------
 echo ""
 echo "--------------------"

@@ -82,3 +82,18 @@ SDL_Aout *ffpipeline_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
 {
     return pipeline->func_open_audio_output(pipeline, ffp);
 }
+
+int ffpipeline_check_support_drm(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+{
+    return pipeline->func_check_support_drm(pipeline, ffp);
+}
+
+int ffpipeline_update_drm_init_info(IJKFF_Pipeline *pipeline, FFPlayer *ffp)
+{
+    return pipeline->func_update_drm_init_info(pipeline, ffp);
+}
+
+int ffpipeline_get_drm_session_state(IJKFF_Pipeline* pipeline, FFPlayer *ffp, int type, int flag)
+{
+    return pipeline->func_get_drm_session_state(pipeline, ffp, type, flag);
+}

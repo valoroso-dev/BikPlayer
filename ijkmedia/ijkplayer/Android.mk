@@ -64,6 +64,7 @@ LOCAL_SRC_FILES += ijkavformat/ijkioandroidio.c
 LOCAL_SRC_FILES += ijkavformat/ijkioprotocol.c
 LOCAL_SRC_FILES += ijkavformat/ijkioapplication.c
 LOCAL_SRC_FILES += ijkavformat/ijkiourlhook.c
+LOCAL_SRC_FILES += ijkavformat/ijkplaylist.c
 
 LOCAL_SRC_FILES  += ijkavformat/ijkasync.c
 LOCAL_SRC_FILES  += ijkavformat/ijkurlhook.c

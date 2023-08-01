@@ -32,6 +32,30 @@ typedef struct J4AC_android_media_MediaCodec__BufferInfo {
 } J4AC_android_media_MediaCodec__BufferInfo;
 static J4AC_android_media_MediaCodec__BufferInfo class_J4AC_android_media_MediaCodec__BufferInfo;
 
+typedef struct J4AC_android_media_MediaCodec__CryptoInfo__Pattern {
+    jclass id;
+
+    jmethodID constructor_Pattern;
+    jmethodID method_set;
+} J4AC_android_media_MediaCodec__CryptoInfo__Pattern;
+static J4AC_android_media_MediaCodec__CryptoInfo__Pattern class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern;
+
+typedef struct J4AC_android_media_MediaCodec__CryptoInfo {
+    jclass id;
+
+    jfieldID field_iv;
+    jfieldID field_key;
+    jfieldID field_mode;
+    jfieldID field_numBytesOfClearData;
+    jfieldID field_numBytesOfEncryptedData;
+    jfieldID field_numSubSamples;
+    jmethodID constructor_CryptoInfo;
+    jmethodID method_set;
+    jmethodID method_toString;
+    jmethodID method_setPattern;
+} J4AC_android_media_MediaCodec__CryptoInfo;
+static J4AC_android_media_MediaCodec__CryptoInfo class_J4AC_android_media_MediaCodec__CryptoInfo;
+
 typedef struct J4AC_android_media_MediaCodec {
     jclass id;
 
@@ -41,6 +65,7 @@ typedef struct J4AC_android_media_MediaCodec {
     jmethodID method_getInputBuffers;
     jmethodID method_dequeueInputBuffer;
     jmethodID method_queueInputBuffer;
+    jmethodID method_queueSecureInputBuffer;
     jmethodID method_dequeueOutputBuffer;
     jmethodID method_releaseOutputBuffer;
     jmethodID method_start;
@@ -241,6 +266,568 @@ int J4A_loadClass__J4AC_android_media_MediaCodec__BufferInfo(JNIEnv *env)
         goto fail;
 
     J4A_ALOGD("J4ALoader: OK: '%s' loaded\n", "android.media.MediaCodec$BufferInfo");
+    ret = 0;
+fail:
+    return ret;
+}
+
+jbyteArray J4AC_android_media_MediaCodec__CryptoInfo__iv__get(JNIEnv *env, jobject thiz)
+{
+    return (*env)->GetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_iv);
+}
+
+jbyteArray J4AC_android_media_MediaCodec__CryptoInfo__iv__get__catchAll(JNIEnv *env, jobject thiz)
+{
+    jbyteArray ret_object = J4AC_android_media_MediaCodec__CryptoInfo__iv__get(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !ret_object) {
+        return NULL;
+    }
+
+    return ret_object;
+}
+
+jbyteArray J4AC_android_media_MediaCodec__CryptoInfo__iv__get__asGlobalRef__catchAll(JNIEnv *env, jobject thiz)
+{
+    jbyteArray ret_object   = NULL;
+    jbyteArray local_object = J4AC_android_media_MediaCodec__CryptoInfo__iv__get__catchAll(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+    ret_object = J4A_NewGlobalRef__catchAll(env, local_object);
+    if (!ret_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &local_object);
+    return ret_object;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__iv__set(JNIEnv *env, jobject thiz, jbyteArray value)
+{
+    (*env)->SetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_iv, value);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__iv__set__catchAll(JNIEnv *env, jobject thiz, jbyteArray value)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__iv__set(env, thiz, value);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+jbyteArray J4AC_android_media_MediaCodec__CryptoInfo__key__get(JNIEnv *env, jobject thiz)
+{
+    return (*env)->GetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_key);
+}
+
+jbyteArray J4AC_android_media_MediaCodec__CryptoInfo__key__get__catchAll(JNIEnv *env, jobject thiz)
+{
+    jbyteArray ret_object = J4AC_android_media_MediaCodec__CryptoInfo__key__get(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !ret_object) {
+        return NULL;
+    }
+
+    return ret_object;
+}
+
+jbyteArray J4AC_android_media_MediaCodec__CryptoInfo__key__get__asGlobalRef__catchAll(JNIEnv *env, jobject thiz)
+{
+    jbyteArray ret_object   = NULL;
+    jbyteArray local_object = J4AC_android_media_MediaCodec__CryptoInfo__key__get__catchAll(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+    ret_object = J4A_NewGlobalRef__catchAll(env, local_object);
+    if (!ret_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &local_object);
+    return ret_object;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__key__set(JNIEnv *env, jobject thiz, jbyteArray value)
+{
+    (*env)->SetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_key, value);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__key__set__catchAll(JNIEnv *env, jobject thiz, jbyteArray value)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__key__set(env, thiz, value);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+jint J4AC_android_media_MediaCodec__CryptoInfo__mode__get(JNIEnv *env, jobject thiz)
+{
+    return (*env)->GetIntField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_mode);
+}
+
+jint J4AC_android_media_MediaCodec__CryptoInfo__mode__get__catchAll(JNIEnv *env, jobject thiz)
+{
+    jint ret_value = J4AC_android_media_MediaCodec__CryptoInfo__mode__get(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env)) {
+        return 0;
+    }
+
+    return ret_value;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__mode__set(JNIEnv *env, jobject thiz, jint value)
+{
+    (*env)->SetIntField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_mode, value);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__mode__set__catchAll(JNIEnv *env, jobject thiz, jint value)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__mode__set(env, thiz, value);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+jintArray J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__get(JNIEnv *env, jobject thiz)
+{
+    return (*env)->GetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfClearData);
+}
+
+jintArray J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__get__catchAll(JNIEnv *env, jobject thiz)
+{
+    jintArray ret_object = J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__get(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !ret_object) {
+        return NULL;
+    }
+
+    return ret_object;
+}
+
+jintArray J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__get__asGlobalRef__catchAll(JNIEnv *env, jobject thiz)
+{
+    jintArray ret_object   = NULL;
+    jintArray local_object = J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__get__catchAll(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+    ret_object = J4A_NewGlobalRef__catchAll(env, local_object);
+    if (!ret_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &local_object);
+    return ret_object;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__set(JNIEnv *env, jobject thiz, jintArray value)
+{
+    (*env)->SetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfClearData, value);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__set__catchAll(JNIEnv *env, jobject thiz, jintArray value)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfClearData__set(env, thiz, value);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+jintArray J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__get(JNIEnv *env, jobject thiz)
+{
+    return (*env)->GetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfEncryptedData);
+}
+
+jintArray J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__get__catchAll(JNIEnv *env, jobject thiz)
+{
+    jintArray ret_object = J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__get(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !ret_object) {
+        return NULL;
+    }
+
+    return ret_object;
+}
+
+jintArray J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__get__asGlobalRef__catchAll(JNIEnv *env, jobject thiz)
+{
+    jintArray ret_object   = NULL;
+    jintArray local_object = J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__get__catchAll(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+    ret_object = J4A_NewGlobalRef__catchAll(env, local_object);
+    if (!ret_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &local_object);
+    return ret_object;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__set(JNIEnv *env, jobject thiz, jintArray value)
+{
+    (*env)->SetObjectField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfEncryptedData, value);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__set__catchAll(JNIEnv *env, jobject thiz, jintArray value)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__numBytesOfEncryptedData__set(env, thiz, value);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+jint J4AC_android_media_MediaCodec__CryptoInfo__numSubSamples__get(JNIEnv *env, jobject thiz)
+{
+    return (*env)->GetIntField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_numSubSamples);
+}
+
+jint J4AC_android_media_MediaCodec__CryptoInfo__numSubSamples__get__catchAll(JNIEnv *env, jobject thiz)
+{
+    jint ret_value = J4AC_android_media_MediaCodec__CryptoInfo__numSubSamples__get(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env)) {
+        return 0;
+    }
+
+    return ret_value;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__numSubSamples__set(JNIEnv *env, jobject thiz, jint value)
+{
+    (*env)->SetIntField(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.field_numSubSamples, value);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__numSubSamples__set__catchAll(JNIEnv *env, jobject thiz, jint value)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__numSubSamples__set(env, thiz, value);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+jobject J4AC_android_media_MediaCodec__CryptoInfo__CryptoInfo(JNIEnv *env)
+{
+    return (*env)->NewObject(env, class_J4AC_android_media_MediaCodec__CryptoInfo.id, class_J4AC_android_media_MediaCodec__CryptoInfo.constructor_CryptoInfo);
+}
+
+jobject J4AC_android_media_MediaCodec__CryptoInfo__CryptoInfo__catchAll(JNIEnv *env)
+{
+    jobject ret_object = J4AC_android_media_MediaCodec__CryptoInfo__CryptoInfo(env);
+    if (J4A_ExceptionCheck__catchAll(env) || !ret_object) {
+        return NULL;
+    }
+
+    return ret_object;
+}
+
+jobject J4AC_android_media_MediaCodec__CryptoInfo__CryptoInfo__asGlobalRef__catchAll(JNIEnv *env)
+{
+    jobject ret_object   = NULL;
+    jobject local_object = J4AC_android_media_MediaCodec__CryptoInfo__CryptoInfo__catchAll(env);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+    ret_object = J4A_NewGlobalRef__catchAll(env, local_object);
+    if (!ret_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &local_object);
+    return ret_object;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__set(JNIEnv *env, jobject thiz, jint newNumSubSamples, jintArray newNumBytesOfClearData, jintArray newNumBytesOfEncryptedData, jbyteArray newKey, jbyteArray newIV, jint newMode)
+{
+    (*env)->CallVoidMethod(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.method_set, newNumSubSamples, newNumBytesOfClearData, newNumBytesOfEncryptedData, newKey, newIV, newMode);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__set__catchAll(JNIEnv *env, jobject thiz, jint newNumSubSamples, jintArray newNumBytesOfClearData, jintArray newNumBytesOfEncryptedData, jbyteArray newKey, jbyteArray newIV, jint newMode)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__set(env, thiz, newNumSubSamples, newNumBytesOfClearData, newNumBytesOfEncryptedData, newKey, newIV, newMode);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+jstring J4AC_android_media_MediaCodec__CryptoInfo__toString(JNIEnv *env, jobject thiz)
+{
+    return (*env)->CallObjectMethod(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.method_toString);
+}
+
+jstring J4AC_android_media_MediaCodec__CryptoInfo__toString__catchAll(JNIEnv *env, jobject thiz)
+{
+    jstring ret_object = J4AC_android_media_MediaCodec__CryptoInfo__toString(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !ret_object) {
+        return NULL;
+    }
+
+    return ret_object;
+}
+
+jstring J4AC_android_media_MediaCodec__CryptoInfo__toString__asGlobalRef__catchAll(JNIEnv *env, jobject thiz)
+{
+    jstring ret_object   = NULL;
+    jstring local_object = J4AC_android_media_MediaCodec__CryptoInfo__toString__catchAll(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+    ret_object = J4A_NewGlobalRef__catchAll(env, local_object);
+    if (!ret_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &local_object);
+    return ret_object;
+}
+
+const char *J4AC_android_media_MediaCodec__CryptoInfo__toString__asCBuffer(JNIEnv *env, jobject thiz, char *out_buf, int out_len)
+{
+    const char *ret_value = NULL;
+    const char *c_str     = NULL;
+    jstring local_string = J4AC_android_media_MediaCodec__CryptoInfo__toString(env, thiz);
+    if (J4A_ExceptionCheck__throwAny(env) || !local_string) {
+        goto fail;
+    }
+
+    c_str = (*env)->GetStringUTFChars(env, local_string, NULL );
+    if (J4A_ExceptionCheck__throwAny(env) || !c_str) {
+        goto fail;
+    }
+
+    strlcpy(out_buf, c_str, out_len);
+    ret_value = out_buf;
+
+fail:
+    J4A_ReleaseStringUTFChars__p(env, local_string, &c_str);
+    J4A_DeleteLocalRef__p(env, &local_string);
+    return ret_value;
+}
+
+const char *J4AC_android_media_MediaCodec__CryptoInfo__toString__asCBuffer__catchAll(JNIEnv *env, jobject thiz, char *out_buf, int out_len)
+{
+    const char *ret_value = NULL;
+    const char *c_str     = NULL;
+    jstring local_string = J4AC_android_media_MediaCodec__CryptoInfo__toString__catchAll(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_string) {
+        goto fail;
+    }
+
+    c_str = (*env)->GetStringUTFChars(env, local_string, NULL );
+    if (J4A_ExceptionCheck__catchAll(env) || !c_str) {
+        goto fail;
+    }
+
+    strlcpy(out_buf, c_str, out_len);
+    ret_value = out_buf;
+
+fail:
+    J4A_ReleaseStringUTFChars__p(env, local_string, &c_str);
+    J4A_DeleteLocalRef__p(env, &local_string);
+    return ret_value;
+}
+
+jobject J4AC_android_media_MediaCodec__CryptoInfo__Pattern__Pattern(JNIEnv *env, jint blocksToEncrypt, jint blocksToSkip)
+{
+    return (*env)->NewObject(env, class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.id, class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.constructor_Pattern, blocksToEncrypt, blocksToSkip);
+}
+
+jobject J4AC_android_media_MediaCodec__CryptoInfo__Pattern__Pattern__catchAll(JNIEnv *env, jint blocksToEncrypt, jint blocksToSkip)
+{
+    jobject ret_object = J4AC_android_media_MediaCodec__CryptoInfo__Pattern__Pattern(env, blocksToEncrypt, blocksToSkip);
+    if (J4A_ExceptionCheck__catchAll(env) || !ret_object) {
+        return NULL;
+    }
+
+    return ret_object;
+}
+
+jobject J4AC_android_media_MediaCodec__CryptoInfo__Pattern__Pattern__asGlobalRef__catchAll(JNIEnv *env, jint blocksToEncrypt, jint blocksToSkip)
+{
+    jobject ret_object   = NULL;
+    jobject local_object = J4AC_android_media_MediaCodec__CryptoInfo__Pattern__Pattern__catchAll(env, blocksToEncrypt, blocksToSkip);
+    if (J4A_ExceptionCheck__catchAll(env) || !local_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+    ret_object = J4A_NewGlobalRef__catchAll(env, local_object);
+    if (!ret_object) {
+        ret_object = NULL;
+        goto fail;
+    }
+
+fail:
+    J4A_DeleteLocalRef__p(env, &local_object);
+    return ret_object;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__Pattern__set(JNIEnv *env, jobject thiz, jint blocksToEncrypt, jint blocksToSkip)
+{
+    (*env)->CallVoidMethod(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.method_set, blocksToEncrypt, blocksToSkip);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__Pattern__set__catchAll(JNIEnv *env, jobject thiz, jint blocksToEncrypt, jint blocksToSkip)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__Pattern__set(env, thiz, blocksToEncrypt, blocksToSkip);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+int J4A_loadClass__J4AC_android_media_MediaCodec__CryptoInfo__Pattern(JNIEnv *env)
+{
+    int         ret                   = -1;
+    const char *J4A_UNUSED(name)      = NULL;
+    const char *J4A_UNUSED(sign)      = NULL;
+    jclass      J4A_UNUSED(class_id)  = NULL;
+    int         J4A_UNUSED(api_level) = 0;
+
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.id != NULL)
+        return 0;
+
+    api_level = J4A_GetSystemAndroidApiLevel(env);
+
+    if (api_level < 24) {
+        J4A_ALOGW("J4ALoader: Ignore: '%s' need API %d\n", "android.media.MediaCodec$CryptoInfo$Pattern", api_level);
+        goto ignore;
+    }
+
+    sign = "android/media/MediaCodec$CryptoInfo$Pattern";
+    class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.id = J4A_FindClass__asGlobalRef__catchAll(env, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.id == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.id;
+    name     = "<init>";
+    sign     = "(II)V";
+    class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.constructor_Pattern = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.constructor_Pattern == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.id;
+    name     = "set";
+    sign     = "(II)V";
+    class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.method_set = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo__Pattern.method_set == NULL)
+        goto fail;
+
+    J4A_ALOGD("J4ALoader: OK: '%s' loaded\n", "android.media.MediaCodec$CryptoInfo$Pattern");
+ignore:
+    ret = 0;
+fail:
+    return ret;
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__setPattern(JNIEnv *env, jobject thiz, jobject newPattern)
+{
+    (*env)->CallVoidMethod(env, thiz, class_J4AC_android_media_MediaCodec__CryptoInfo.method_setPattern, newPattern);
+}
+
+void J4AC_android_media_MediaCodec__CryptoInfo__setPattern__catchAll(JNIEnv *env, jobject thiz, jobject newPattern)
+{
+    J4AC_android_media_MediaCodec__CryptoInfo__setPattern(env, thiz, newPattern);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
+int J4A_loadClass__J4AC_android_media_MediaCodec__CryptoInfo(JNIEnv *env)
+{
+    int         ret                   = -1;
+    const char *J4A_UNUSED(name)      = NULL;
+    const char *J4A_UNUSED(sign)      = NULL;
+    jclass      J4A_UNUSED(class_id)  = NULL;
+    int         J4A_UNUSED(api_level) = 0;
+
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.id != NULL)
+        return 0;
+
+    sign = "android/media/MediaCodec$CryptoInfo";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.id = J4A_FindClass__asGlobalRef__catchAll(env, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.id == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "iv";
+    sign     = "[B";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.field_iv = J4A_GetFieldID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.field_iv == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "key";
+    sign     = "[B";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.field_key = J4A_GetFieldID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.field_key == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "mode";
+    sign     = "I";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.field_mode = J4A_GetFieldID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.field_mode == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "numBytesOfClearData";
+    sign     = "[I";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfClearData = J4A_GetFieldID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfClearData == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "numBytesOfEncryptedData";
+    sign     = "[I";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfEncryptedData = J4A_GetFieldID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.field_numBytesOfEncryptedData == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "numSubSamples";
+    sign     = "I";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.field_numSubSamples = J4A_GetFieldID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.field_numSubSamples == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "<init>";
+    sign     = "()V";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.constructor_CryptoInfo = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.constructor_CryptoInfo == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "set";
+    sign     = "(I[I[I[B[BI)V";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.method_set = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.method_set == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+    name     = "toString";
+    sign     = "()Ljava/lang/String;";
+    class_J4AC_android_media_MediaCodec__CryptoInfo.method_toString = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec__CryptoInfo.method_toString == NULL)
+        goto fail;
+
+    ret = J4A_loadClass__J4AC_android_media_MediaCodec__CryptoInfo__Pattern(env);
+    if (ret)
+        goto fail;
+
+    if (J4A_GetSystemAndroidApiLevel(env) >= 24) {
+        class_id = class_J4AC_android_media_MediaCodec__CryptoInfo.id;
+        name     = "setPattern";
+        sign     = "(Landroid/media/MediaCodec$CryptoInfo$Pattern;)V";
+        class_J4AC_android_media_MediaCodec__CryptoInfo.method_setPattern = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+        if (class_J4AC_android_media_MediaCodec__CryptoInfo.method_setPattern == NULL)
+            goto fail;
+    }
+
+    J4A_ALOGD("J4ALoader: OK: '%s' loaded\n", "android.media.MediaCodec$CryptoInfo");
     ret = 0;
 fail:
     return ret;
@@ -448,6 +1035,17 @@ void J4AC_android_media_MediaCodec__queueInputBuffer__catchAll(JNIEnv *env, jobj
     J4A_ExceptionCheck__catchAll(env);
 }
 
+void J4AC_android_media_MediaCodec__queueSecureInputBuffer(JNIEnv *env, jobject thiz, jint index, jint offset, jobject info, jlong presentationTimeUs, jint flags)
+{
+    (*env)->CallVoidMethod(env, thiz, class_J4AC_android_media_MediaCodec.method_queueSecureInputBuffer, index, offset, info, presentationTimeUs, flags);
+}
+
+void J4AC_android_media_MediaCodec__queueSecureInputBuffer__catchAll(JNIEnv *env, jobject thiz, jint index, jint offset, jobject info, jlong presentationTimeUs, jint flags)
+{
+    J4AC_android_media_MediaCodec__queueSecureInputBuffer(env, thiz, index, offset, info, presentationTimeUs, flags);
+    J4A_ExceptionCheck__catchAll(env);
+}
+
 jint J4AC_android_media_MediaCodec__dequeueOutputBuffer(JNIEnv *env, jobject thiz, jobject info, jlong timeoutUs)
 {
     return (*env)->CallIntMethod(env, thiz, class_J4AC_android_media_MediaCodec.method_dequeueOutputBuffer, info, timeoutUs);
@@ -545,6 +1143,10 @@ int J4A_loadClass__J4AC_android_media_MediaCodec(JNIEnv *env)
     if (ret)
         goto fail;
 
+    ret = J4A_loadClass__J4AC_android_media_MediaCodec__CryptoInfo(env);
+    if (ret)
+        goto fail;
+
     class_id = class_J4AC_android_media_MediaCodec.id;
     name     = "createByCodecName";
     sign     = "(Ljava/lang/String;)Landroid/media/MediaCodec;";
@@ -585,6 +1187,13 @@ int J4A_loadClass__J4AC_android_media_MediaCodec(JNIEnv *env)
     sign     = "(IIIJI)V";
     class_J4AC_android_media_MediaCodec.method_queueInputBuffer = J4A_GetMethodID__catchAll(env, class_id, name, sign);
     if (class_J4AC_android_media_MediaCodec.method_queueInputBuffer == NULL)
+        goto fail;
+
+    class_id = class_J4AC_android_media_MediaCodec.id;
+    name     = "queueSecureInputBuffer";
+    sign     = "(IILandroid/media/MediaCodec$CryptoInfo;JI)V";
+    class_J4AC_android_media_MediaCodec.method_queueSecureInputBuffer = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_MediaCodec.method_queueSecureInputBuffer == NULL)
         goto fail;
 
     class_id = class_J4AC_android_media_MediaCodec.id;

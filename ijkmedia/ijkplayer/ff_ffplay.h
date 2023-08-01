@@ -92,8 +92,8 @@ int       ffp_queue_picture(FFPlayer *ffp, AVFrame *src_frame, double pts, doubl
 int       ffp_get_master_sync_type(VideoState *is);
 double    ffp_get_master_clock(VideoState *is);
 
-void      ffp_toggle_buffering_l(FFPlayer *ffp, int start_buffering);
-void      ffp_toggle_buffering(FFPlayer *ffp, int start_buffering);
+void      ffp_toggle_buffering_l(FFPlayer *ffp, int start_buffering, int reason);
+void      ffp_toggle_buffering(FFPlayer *ffp, int start_buffering, int reason);
 void      ffp_check_buffering_l(FFPlayer *ffp);
 void      ffp_track_statistic_l(FFPlayer *ffp, AVStream *st, PacketQueue *q, FFTrackCacheStatistic *cache);
 void      ffp_audio_statistic_l(FFPlayer *ffp);
@@ -118,5 +118,10 @@ void      ffp_set_property_int64(FFPlayer *ffp, int id, int64_t value);
 
 // must be freed with free();
 struct IjkMediaMeta *ffp_get_meta_l(FFPlayer *ffp);
+
+int       ffp_update_drm_init_info(FFPlayer *ffp, const char *drm_info, size_t len, int flag);
+int       ffp_update_drm_init_info2(FFPlayer *ffp, AVPacket *pkt, int flag);
+
+int       ffp_play_next(FFPlayer *ffp);
 
 #endif

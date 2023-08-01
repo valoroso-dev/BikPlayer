@@ -23,12 +23,21 @@
 
 @property(atomic,strong) NSURL *url;
 @property(strong,nonatomic) NSString* manifest;
+@property(atomic,strong) NSString *fpsCertificateUrl;
+@property(atomic,strong) NSString *fpsLicensingServiceUrl;
+@property(atomic,strong) NSString *fpsLicensingToken;
 @property(atomic, retain) id<IJKMediaPlayback> player;
 
 - (id)initWithURL:(NSURL *)url;
 - (id)initWithManifest:(NSString*)manifest_string;
 
+- (id)initWithFPS:(NSURL *)url
+fpsCertificateUrl:(NSString *)certificateUrl
+fpsLicensingServiceUrl:(NSString *)licensingServiceUrl
+fpsLicensingToken:(NSString *)licensingToken;
+
 + (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSURL *)url completion:(void(^)())completion;
++ (void)presentFromViewController:(UIViewController *)viewController withTitle:(NSString *)title URL:(NSURL *)url fpsCertificateUrl:(NSString *)certificateUrl fpsLicensingServiceUrl:(NSString *)licensingServiceUrl fpsLicensingToken:(NSString *)licensingToken completion:(void(^)())completion;
 
 - (IBAction)onClickMediaControl:(id)sender;
 - (IBAction)onClickOverlay:(id)sender;

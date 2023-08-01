@@ -2,6 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     android:paddingLeft="@dimen/ijk_horizontal_margin"
     android:paddingTop="0dp"
     android:paddingRight="@dimen/ijk_horizontal_margin"
@@ -16,13 +17,14 @@
             android:id="@+id/path_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="16dp"
             android:hint="please input media url here"
             android:imeOptions="actionDone|actionSend"
             android:inputType="textUri"
             android:lines="1"
             android:singleLine="true" />
 
-        <tv.danmaku.ijk.media.example.fragments.MyListView
+        <ListView
             android:id="@+id/file_list_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

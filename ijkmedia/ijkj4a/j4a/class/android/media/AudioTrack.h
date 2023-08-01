@@ -47,6 +47,8 @@ void J4AC_android_media_AudioTrack__release(JNIEnv *env, jobject thiz);
 void J4AC_android_media_AudioTrack__release__catchAll(JNIEnv *env, jobject thiz);
 jint J4AC_android_media_AudioTrack__write(JNIEnv *env, jobject thiz, jbyteArray audioData, jint offsetInBytes, jint sizeInBytes);
 jint J4AC_android_media_AudioTrack__write__catchAll(JNIEnv *env, jobject thiz, jbyteArray audioData, jint offsetInBytes, jint sizeInBytes);
+jint J4AC_android_media_AudioTrack__write23(JNIEnv *env, jobject thiz, jbyteArray audioData, jint offsetInBytes, jint sizeInBytes, jint writeMode);
+jint J4AC_android_media_AudioTrack__write23__catchAll(JNIEnv *env, jobject thiz, jbyteArray audioData, jint offsetInBytes, jint sizeInBytes, jint writeMode);
 jint J4AC_android_media_AudioTrack__setStereoVolume(JNIEnv *env, jobject thiz, jfloat leftGain, jfloat rightGain);
 jint J4AC_android_media_AudioTrack__setStereoVolume__catchAll(JNIEnv *env, jobject thiz, jfloat leftGain, jfloat rightGain);
 jint J4AC_android_media_AudioTrack__getAudioSessionId(JNIEnv *env, jobject thiz);
@@ -91,6 +93,8 @@ int J4A_loadClass__J4AC_android_media_AudioTrack(JNIEnv *env);
 #define J4AC_AudioTrack__release__catchAll J4AC_android_media_AudioTrack__release__catchAll
 #define J4AC_AudioTrack__write J4AC_android_media_AudioTrack__write
 #define J4AC_AudioTrack__write__catchAll J4AC_android_media_AudioTrack__write__catchAll
+#define J4AC_AudioTrack__write23 J4AC_android_media_AudioTrack__write23
+#define J4AC_AudioTrack__write23__catchAll J4AC_android_media_AudioTrack__write23__catchAll
 #define J4AC_AudioTrack__setStereoVolume J4AC_android_media_AudioTrack__setStereoVolume
 #define J4AC_AudioTrack__setStereoVolume__catchAll J4AC_android_media_AudioTrack__setStereoVolume__catchAll
 #define J4AC_AudioTrack__getAudioSessionId J4AC_android_media_AudioTrack__getAudioSessionId

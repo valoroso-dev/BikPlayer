@@ -41,5 +41,8 @@ void ijkmp_android_set_surface(JNIEnv *env, IjkMediaPlayer *mp, jobject android_
 void ijkmp_android_set_volume(JNIEnv *env, IjkMediaPlayer *mp, float left, float right);
 int  ijkmp_android_get_audio_session_id(JNIEnv *env, IjkMediaPlayer *mp);
 void ijkmp_android_set_mediacodec_select_callback(IjkMediaPlayer *mp, bool (*callback)(void *opaque, ijkmp_mediacodecinfo_context *mcc), void *opaque);
+void ijkmp_android_set_on_drm_init_info_updated_callback(IjkMediaPlayer *mp, int (*callback)(void *opaque, char* drm_info, int len, int flag));
+void ijkmp_android_set_get_media_crypto_callback(IjkMediaPlayer *mp, jobject (*callback)(void *opaque, int type));
+void ijkmp_android_set_get_drm_session_state_callback(IjkMediaPlayer *mp, int (*callback)(void *opaque, int type, int flag));
 
 #endif

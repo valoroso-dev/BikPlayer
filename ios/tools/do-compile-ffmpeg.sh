@@ -42,6 +42,7 @@ if [ -z "$FF_ARCH" ]; then
     echo "You must specific an architecture 'armv7, armv7s, arm64, i386, x86_64, ...'.\n"
     exit 1
 fi
+FF_BUILD_SIMULATOR=$FF_BUILD_OPT
 
 
 FF_BUILD_ROOT=`pwd`
@@ -73,6 +74,20 @@ FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --arch=$FF_ARCH"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --target-os=$FF_TAGET_OS"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --enable-static"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-shared"
+
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-muxer=dash"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-demuxer=dash"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-libxml2"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-jni"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-mediacodec"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-decoder=h264_mediacodec"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-decoder=hevc_mediacodec"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-decoder=aac_mediacodec"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-decoder=aac_latm_mediacodec"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-decoder=mp2_mediacodec"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-decoder=mp3_mediacodec"
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-decoder=ac3_mediacodec"
+
 FFMPEG_EXTRA_CFLAGS=
 
 # i386, x86_64
@@ -153,9 +168,15 @@ elif [ "$FF_ARCH" = "armv7s" ]; then
 elif [ "$FF_ARCH" = "arm64" ]; then
     FF_BUILD_NAME="ffmpeg-arm64"
     FF_BUILD_NAME_OPENSSL=openssl-arm64
-    FF_XCRUN_OSVERSION="-miphoneos-version-min=7.0"
+    if [ "$FF_BUILD_SIMULATOR" = "simulator" ]; then
+        FF_XCRUN_PLATFORM="iPhoneSimulator"
+        FF_XCRUN_OSVERSION="-mios-simulator-version-min=7.0"
+        FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_SIMULATOR"
+    else
+        FF_XCRUN_OSVERSION="-miphoneos-version-min=7.0"
+        FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_ARM"
+    fi
     FF_XCODE_BITCODE="-fembed-bitcode"
-    FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_ARM"
     FF_GASPP_EXPORT="GASPP_FIX_XCODE5=1"
 else
     echo "unknown architecture $FF_ARCH";

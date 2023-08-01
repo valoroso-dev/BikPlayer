@@ -22,6 +22,7 @@
 #import "IJKMoviePlayerViewController.h"
 #import "IJKDemoLocalFolderViewController.h"
 #import "IJKDemoSampleViewController.h"
+#import "IJKDemoFPSViewController.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 
 @interface IJKDemoMainViewController () <UITableViewDataSource, UITableViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
@@ -45,6 +46,7 @@
                                  @"Input URL",
                                  @"Scan QRCode",
                                  @"Online Samples",
+                                 @"Play FPS",
                                  ];
     
     NSURL *documentsUrl = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] firstObject];
@@ -150,6 +152,10 @@
 
                 case 4:
                     [self.navigationController pushViewController:[[IJKDemoSampleViewController alloc] init] animated:YES];
+                    break;
+
+                case 5:
+                    [self.navigationController pushViewController:[[IJKDemoFPSViewController alloc] init] animated:YES];
                     break;
 
                 default:

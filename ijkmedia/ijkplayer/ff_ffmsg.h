@@ -41,6 +41,8 @@
 #define FFP_MSG_COMPONENT_OPEN              409
 #define FFP_MSG_VIDEO_SEEK_RENDERING_START  410
 #define FFP_MSG_AUDIO_SEEK_RENDERING_START  411
+#define FFP_MSG_READ_FIRST_VIDEO_FRAME      412     /* find_stream_info */
+#define FFP_MSG_READ_FIRST_AUDIO_FRAME      413     /* find_stream_info */
 
 #define FFP_MSG_BUFFERING_START             500
 #define FFP_MSG_BUFFERING_END               501
@@ -50,6 +52,8 @@
 #define FFP_MSG_SEEK_COMPLETE               600     /* arg1 = seek position,                   arg2 = error */
 #define FFP_MSG_PLAYBACK_STATE_CHANGED      700
 #define FFP_MSG_TIMED_TEXT                  800
+#define FFP_MSG_STREAM_INFO                 801
+#define FFP_MSG_STARTUP_INFO                802
 #define FFP_MSG_ACCURATE_SEEK_COMPLETE      900     /* arg1 = current position*/
 #define FFP_MSG_GET_IMG_STATE               1000    /* arg1 = timestamp, arg2 = result code, obj = file name*/
 
@@ -105,5 +109,22 @@
 #define FFP_PROP_INT64_LOGICAL_FILE_SIZE                20209
 #define FFP_PROP_INT64_SHARE_CACHE_DATA                 20210
 #define FFP_PROP_INT64_IMMEDIATE_RECONNECT              20211
+
+#define FFP_BUFFERING_REASION_NO_DATA                   1
+#define FFP_BUFFERING_REASION_SEEK_START                2
+#define FFP_BUFFERING_REASION_SEEK_COMPLETE             3
+#define FFP_BUFFERING_REASION_START_PLAYING             4
+#define FFP_BUFFERING_REASION_HAS_DATA                  5
+#define FFP_BUFFERING_REASION_FULL                      6
+#define FFP_BUFFERING_REASION_COMPLETE                  7
+#define FFP_BUFFERING_REASION_EOF                       8
+#define FFP_BUFFERING_REASION_DECODE_BLOCK              9
+#define FFP_BUFFERING_REASION_DECODE_SLOW               10
+#define FFP_BUFFERING_REASION_DECODE_FFMPEG             11
+
+#define FFP_ERROR_AUDIO_NOT_CONSUME                     998    // audio data not comsume too long
+#define FFP_ERROR_VIDEO_DECODER_OPEN_ERROR              999    // open video decoder fail
+#define FFP_ERROR_NO_AUDIO_RECV                         10002  // haven't receive audio for a while
+#define FFP_ERROR_NO_VIDEO_RECV                         10003  // haven't receive video for a while
 
 #endif

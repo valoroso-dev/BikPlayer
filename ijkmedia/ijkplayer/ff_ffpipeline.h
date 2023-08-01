@@ -41,6 +41,9 @@ struct IJKFF_Pipeline {
     SDL_Aout       *(*func_open_audio_output)   (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
     IJKFF_Pipenode *(*func_init_video_decoder)  (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
     int           (*func_config_video_decoder)  (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+    int            (*func_check_support_drm)    (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+    int            (*func_update_drm_init_info) (IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+    int            (*func_get_drm_session_state)(IJKFF_Pipeline *pipeline, FFPlayer *ffp, int type, int flag);
 };
 
 IJKFF_Pipeline *ffpipeline_alloc(SDL_Class *opaque_class, size_t opaque_size);
@@ -52,5 +55,8 @@ SDL_Aout       *ffpipeline_open_audio_output(IJKFF_Pipeline *pipeline, FFPlayer 
 
 IJKFF_Pipenode* ffpipeline_init_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
 int ffpipeline_config_video_decoder(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+int ffpipeline_check_support_drm(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+int ffpipeline_update_drm_init_info(IJKFF_Pipeline *pipeline, FFPlayer *ffp);
+int ffpipeline_get_drm_session_state(IJKFF_Pipeline *pipeline, FFPlayer *ffp, int type, int flag);
 
 #endif

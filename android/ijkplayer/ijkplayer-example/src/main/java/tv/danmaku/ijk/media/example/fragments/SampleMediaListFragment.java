@@ -87,7 +87,9 @@ public class SampleMediaListFragment extends Fragment {
                 SampleMediaItem item = mAdapter.getItem(position);
                 String name = item.mName;
                 String url = item.mUrl;
-                VideoActivity.intentTo(activity, url, name);
+                String licenseUrl = item.mDrmLicenseUrl;
+                String licenseToken = item.mDrmLicenseToken;
+                VideoActivity.intentTo(activity, url, licenseUrl, licenseToken, name);
             }
         });
 
@@ -166,15 +168,28 @@ public class SampleMediaListFragment extends Fragment {
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear4/prog_index.m3u8", "bipbop advanced 1289x720 @ 1 Mbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear5/prog_index.m3u8", "bipbop advanced 1920x1080 @ 2 Mbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear0/prog_index.m3u8", "bipbop advanced 22.050Hz stereo @ 40 kbps");
+
+        mAdapter.addItem("https://storage.googleapis.com/wvmedia/clear/h264/tears/tears.mpd", "[Clear DASH]HD (MP4, H264)");
+        mAdapter.addItem("https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears.mpd", "[Widevine DASH]HD (MP4, H264, cenc)", "https://proxy.uat.widevine.com/proxy?provider=widevine_test", null);
+        mAdapter.addItem("https://storage.googleapis.com/wvmedia/cbcs/h264/tears/tears_aes_cbcs.mpd", "[Widevine DASH]HD (MP4, H264, cbcs)", "https://proxy.uat.widevine.com/proxy?provider=widevine_test", null);
     }
 
     final class SampleMediaItem {
         String mUrl;
         String mName;
+        String mDrmLicenseUrl;
+        String mDrmLicenseToken;
 
         public SampleMediaItem(String url, String name) {
             mUrl = url;
             mName = name;
+        }
+
+        public SampleMediaItem(String url, String name, String licenseUrl, String licenseToken) {
+            mUrl = url;
+            mName = name;
+            mDrmLicenseUrl = licenseUrl;
+            mDrmLicenseToken = licenseToken;
         }
     }
 
@@ -185,6 +200,10 @@ public class SampleMediaListFragment extends Fragment {
 
         public void addItem(String url, String name) {
             add(new SampleMediaItem(url, name));
+        }
+
+        public void addItem(String url, String name, String licenseUrl, String licenseToken) {
+            add(new SampleMediaItem(url, name, licenseUrl, licenseToken));
         }
 
         @Override

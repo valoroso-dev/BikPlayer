@@ -75,6 +75,7 @@
 #import "IJKMediaUtils.h"
 #import "IJKKVOController.h"
 #import "IJKNotificationManager.h"
+#import "IJKContentKeyManager.h"
 #include "ijksdl/ios/ijksdl_ios.h"
 
 // avoid float equal compare
@@ -111,12 +112,12 @@ static void *KVO_AVPlayerItem_playbackBufferEmpty       = &KVO_AVPlayerItem_play
 
 @property(nonatomic, readwrite)  BOOL isPreparedToPlay;
 
+@property(nonatomic, strong) IJKContentKeyManager *contentManager;
+
 @end
 
 @implementation IJKAVMoviePlayerController {
     NSURL           *_playUrl;
-    AVURLAsset      *_playAsset;
-    AVPlayerItem    *_playerItem;
     AVPlayer        *_player;
     IJKAVPlayerLayerView * _avView;
     
@@ -165,6 +166,12 @@ static void *KVO_AVPlayerItem_playbackBufferEmpty       = &KVO_AVPlayerItem_play
 @synthesize isDanmakuMediaAirPlay       = _isDanmakuMediaAirPlay;
 
 static IJKAVMoviePlayerController* instance;
+
+- (id)setFairPlayCertificate:(NSString *)certificateUrl fpsLicensingServiceUrl:(NSString *)licensingServiceUrl fpsParams:(NSDictionary *)params
+{
+    _contentManager = [[[IJKContentKeyManager alloc] init] setFairPlayCertificate:certificateUrl licensingUrl:licensingServiceUrl params:params];
+    return self;
+}
 
 - (id)initWithContentURL:(NSURL *)aUrl
 {
@@ -248,6 +255,9 @@ static IJKAVMoviePlayerController* instance;
     NSArray *requestedKeys = @[@"playable"];
     
     _playAsset = asset;
+    if (_contentManager != nil) {
+        [_contentManager setContentKeyRecipient:_playAsset];
+    }
     [asset loadValuesAsynchronouslyForKeys:requestedKeys
                          completionHandler:^{
                              dispatch_async( dispatch_get_main_queue(), ^{

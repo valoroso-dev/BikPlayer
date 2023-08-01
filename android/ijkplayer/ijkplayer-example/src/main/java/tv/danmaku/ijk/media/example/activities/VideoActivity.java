@@ -54,6 +54,8 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
     private String mVideoPath;
     private Uri    mVideoUri;
+    private String mLicenseUrl;
+    private String mLicenseToken;
 
     private AndroidMediaController mMediaController;
     private IjkVideoView mVideoView;
@@ -65,15 +67,25 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     private Settings mSettings;
     private boolean mBackPressed;
 
-    public static Intent newIntent(Context context, String videoPath, String videoTitle) {
+    public static Intent newIntent(Context context, String videoPath, String videoTitle, String licenseUrl, String licenseToken) {
         Intent intent = new Intent(context, VideoActivity.class);
         intent.putExtra("videoPath", videoPath);
         intent.putExtra("videoTitle", videoTitle);
+        if (!TextUtils.isEmpty(licenseUrl)) {
+            intent.putExtra("licenseUrl", licenseUrl);
+        }
+        if (!TextUtils.isEmpty(licenseToken)) {
+            intent.putExtra("licenseToken", licenseToken);
+        }
         return intent;
     }
 
     public static void intentTo(Context context, String videoPath, String videoTitle) {
-        context.startActivity(newIntent(context, videoPath, videoTitle));
+        context.startActivity(newIntent(context, videoPath, videoTitle, null, null));
+    }
+
+    public static void intentTo(Context context, String videoPath, String licenseUrl, String licenseToken, String videoTitle) {
+        context.startActivity(newIntent(context, videoPath, videoTitle, licenseUrl, licenseToken));
     }
 
     @Override
@@ -85,6 +97,8 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
 
         // handle arguments
         mVideoPath = getIntent().getStringExtra("videoPath");
+        mLicenseUrl = getIntent().getStringExtra("licenseUrl");
+        mLicenseToken = getIntent().getStringExtra("licenseToken");
 
         Intent intent = getIntent();
         String intentAction = intent.getAction();
@@ -152,6 +166,9 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         }
         if (mSettings.getPlayer()==Settings.PV_PLAYER__IjkMediaPlayer) {
             mVideoView.setHudView(mHudView);
+        }
+        if (!TextUtils.isEmpty(mLicenseUrl)) {
+            mVideoView.setDrmInfo(mLicenseUrl, mLicenseToken);
         }
         mVideoView.start();
     }

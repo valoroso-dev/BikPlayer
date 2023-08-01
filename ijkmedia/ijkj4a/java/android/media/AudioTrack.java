@@ -17,6 +17,8 @@ public class AudioTrack {
     public void release();
 
     public int write(byte[] audioData, int offsetInBytes, int sizeInBytes);
+    @MinApi(23)
+    public int write23(byte[] audioData, int offsetInBytes, int sizeInBytes, int writeMode);
 
     public int setStereoVolume(float leftGain, float rightGain);
     public int getAudioSessionId();

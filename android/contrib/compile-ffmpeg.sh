@@ -29,6 +29,7 @@ set +x
 FF_ACT_ARCHS_32="armv5 armv7a x86"
 FF_ACT_ARCHS_64="armv5 armv7a arm64 x86 x86_64"
 FF_ACT_ARCHS_ALL=$FF_ACT_ARCHS_64
+FF_ACT_ARCHS_ARM="armv7a arm64"
 
 echo_archs() {
     echo "===================="
@@ -80,6 +81,14 @@ case "$FF_TARGET" in
     all|all64)
         echo_archs $FF_ACT_ARCHS_64
         for ARCH in $FF_ACT_ARCHS_64
+        do
+            sh tools/do-compile-ffmpeg.sh $ARCH $FF_TARGET_EXTRA
+        done
+        echo_nextstep_help
+    ;;
+    arm)
+        echo_archs $FF_ACT_ARCHS_ARM
+        for ARCH in $FF_ACT_ARCHS_ARM
         do
             sh tools/do-compile-ffmpeg.sh $ARCH $FF_TARGET_EXTRA
         done

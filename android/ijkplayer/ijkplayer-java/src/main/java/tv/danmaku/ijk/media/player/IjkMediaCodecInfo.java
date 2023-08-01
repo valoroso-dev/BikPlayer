@@ -7,6 +7,7 @@ import android.media.MediaCodecInfo.CodecProfileLevel;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Range;
 
 import java.util.Locale;
 import java.util.Map;
@@ -148,7 +149,11 @@ public class IjkMediaCodecInfo {
         name = name.toLowerCase(Locale.US);
         int rank = RANK_NO_SENSE;
         if (!name.startsWith("omx.")) {
-            rank = RANK_NON_STANDARD;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                rank = codecInfo.isHardwareAccelerated() ? RANK_LAST_CHANCE : RANK_NON_STANDARD;
+            } else {
+                rank = RANK_NON_STANDARD;
+            }
         } else if (name.startsWith("omx.pv")) {
             rank = RANK_SOFTWARE;
         } else if (name.startsWith("omx.google.")) {
@@ -192,6 +197,38 @@ public class IjkMediaCodecInfo {
         candidate.mRank = rank;
         candidate.mMimeType = mimeType;
         return candidate;
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    public void dumpCodecCapabilities(String mimeType) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
+            return;
+
+        try {
+            CodecCapabilities caps = mCodecInfo
+                    .getCapabilitiesForType(mimeType);
+            Range<Integer> widthRange = null;
+            Range<Integer> heightRange = null;
+            Range<Integer> frameRateRange = null;
+            int widthAlignment = 0;
+            int heightAlignment = 0;
+            if (caps != null) {
+                MediaCodecInfo.VideoCapabilities videoCapabilities = caps.getVideoCapabilities();
+                if (videoCapabilities != null) {
+                    widthRange = videoCapabilities.getSupportedWidths();
+                    heightRange = videoCapabilities.getSupportedHeights();
+                    frameRateRange = videoCapabilities.getSupportedFrameRates();
+                    widthAlignment = videoCapabilities.getWidthAlignment();
+                    heightAlignment = videoCapabilities.getHeightAlignment();
+                }
+            }
+
+            Log.i(TAG,
+                    String.format(Locale.US, " widthRange:%s, heightRange:%s, frameRateHeight:%s, widthAlignment:%s, heightAlignment:%s",
+                            widthRange, heightRange, frameRateRange, widthAlignment, heightAlignment));
+        } catch (Throwable e) {
+            Log.i(TAG, "dumpCodecCapabilities: exception");
+        }
     }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
