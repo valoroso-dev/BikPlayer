@@ -4096,7 +4096,7 @@ static int read_thread(void *arg)
                     toggle_pause(ffp, 1);
                     if (ffp->error) {
                         av_log(ffp, AV_LOG_INFO, "ffp_toggle_buffering: error: %d\n", ffp->error);
-                        ffp_notify_msg1(ffp, FFP_MSG_ERROR);
+                        ffp_notify_msg2(ffp, FFP_MSG_ERROR, ffp->error);
                     } else {
                         av_log(ffp, AV_LOG_INFO, "ffp_toggle_buffering: completed: OK\n");
                         ffp_notify_msg1(ffp, FFP_MSG_COMPLETED);
@@ -4275,6 +4275,7 @@ static int read_thread(void *arg)
         avformat_close_input(&ic);
 
     if (!ffp->prepared || !is->abort_request) {
+        last_error = ret;
         ffp->last_error = last_error;
         ffp_notify_msg2(ffp, FFP_MSG_ERROR, last_error);
     }
