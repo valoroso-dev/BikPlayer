@@ -518,6 +518,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
     }
 
+    public void playNextDataSource(String path)
+            throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
+        _playNextDataSource(path);
+    }
+
     /**
      * Sets the data source (FileDescriptor) to use.  The FileDescriptor must be
      * seekable (N.B. a LocalSocket is not seekable). It is the caller's responsibility
@@ -555,6 +560,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     private native void _setAndroidIOCallback(IAndroidIO androidIO)
             throws IllegalArgumentException, SecurityException, IllegalStateException;
+
+    private native void _playNextDataSource(String path)
+            throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;
 
     @Override
     public String getDataSource() {

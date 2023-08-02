@@ -4134,9 +4134,9 @@ static int read_thread(void *arg)
                 pb_eof = 1;
                 pb_error = ic->pb->error;
             }
-            if (ret == AVERROR_EXIT) {
+            if (ret == AVERROR_EXIT || ret == FFP_ERROR_PLAYLIST_STREAM) {
                 pb_eof = 1;
-                pb_error = AVERROR_EXIT;
+                pb_error = ret;
             }
 
             if (pb_eof) {
@@ -4309,9 +4309,6 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, AVInputForma
         if (!ffp->enable_ijkplaylist) {
             is->filename = av_strdup(filename + 12);
             av_log(NULL, AV_LOG_WARNING, "ijkplaylist is disable\n");
-        } else if (!strstr(filename, ".mpd")) {
-            is->filename = av_strdup(filename + 12);
-            av_log(NULL, AV_LOG_WARNING, "ijkplaylist only can use with dash\n");
         } else {
             is->filename = av_strdup(filename);
         }
@@ -5809,42 +5806,22 @@ int ffp_update_drm_init_info2(FFPlayer *ffp, AVPacket *pkt, int flag)
     return ffp_update_drm_init_info(ffp, (const char*)drm_info_data, drm_info_data_size, flag);
 }
 
-int ffp_play_next(FFPlayer *ffp)
+int ffp_play_next_url(FFPlayer *ffp, const char *url)
 {
     VideoState *is = ffp->is;
-    int audio_index = is->audio_stream;
-    int video_index = is->video_stream;
-    int subtitle_index = is->subtitle_stream;
     int ret;
 
     if (!(is->ic->iformat->flags & AVFMT_IJK_PLAYLIST)) {
         return 0;
     }
 
-    av_log(ffp, AV_LOG_INFO, "ffp_play_next\n");
-
-    if ((ret = av_seek_frame(is->ic, 0, 0, AVSEEK_FLAG_PLAYLIST_NEXT)) < 0) {
+    memset(is->ic->filename, 0, sizeof(is->ic->filename));
+    memcpy(is->ic->filename, url, strlen(url));
+    ret = av_seek_frame(is->ic, 0, 0, AVSEEK_FLAG_PLAYLIST_NEXT);
+    if (ret < 0) {
         av_log(NULL, AV_LOG_ERROR, "%s: failed to seek file %d\n", __func__, ret);
         return 0;
     }
-
-#define SET_STREAM_SELECTED(ffp, stream_index, selected) \
-    if (stream_index >= 0) { \
-        if (ffp_set_stream_selected(ffp, stream_index, selected) < 0) { \
-            av_log(NULL, AV_LOG_ERROR, "%s: failed to %s index %d\n", __func__, (selected ? "select" : "deselect") ,stream_index); \
-            return 0; \
-        } else { \
-            av_log(NULL, AV_LOG_DEBUG, "%s: success to %s index %d\n", __func__, (selected ? "select" : "deselect") ,stream_index); \
-        } \
-    }
-
-    SET_STREAM_SELECTED(ffp, audio_index, 0);
-    SET_STREAM_SELECTED(ffp, video_index, 0);
-    SET_STREAM_SELECTED(ffp, subtitle_index, 0);
-
-    SET_STREAM_SELECTED(ffp, audio_index, 1);
-    SET_STREAM_SELECTED(ffp, video_index, 1);
-    SET_STREAM_SELECTED(ffp, subtitle_index, 1);
 
     if (is->video_stream >= 0) {
         packet_queue_clear_eof(&is->videoq);
@@ -5858,10 +5835,6 @@ int ffp_play_next(FFPlayer *ffp)
         packet_queue_clear_eof(&is->subtitleq);
         packet_queue_put(&is->subtitleq, &flush_pkt);
     }
-    ffp->find_stream_keyframe_ok = 0;
 
-    av_seek_frame(is->ic, 0, 0, AVSEEK_FLAG_PLAYLIST_START);
-    ffp_notify_msg1(ffp, FFP_REQ_START);
-
-    return 1;
+    return 0;
 }

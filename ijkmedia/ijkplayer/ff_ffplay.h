@@ -122,6 +122,6 @@ struct IjkMediaMeta *ffp_get_meta_l(FFPlayer *ffp);
 int       ffp_update_drm_init_info(FFPlayer *ffp, const char *drm_info, size_t len, int flag);
 int       ffp_update_drm_init_info2(FFPlayer *ffp, AVPacket *pkt, int flag);
 
-int       ffp_play_next(FFPlayer *ffp);
+int       ffp_play_next_url(FFPlayer *ffp, const char *url);
 
 #endif

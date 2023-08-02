@@ -671,6 +671,14 @@ int ijkmp_get_loop(IjkMediaPlayer *mp)
     return loop;
 }
 
+void ijkmp_play_next_data_source(IjkMediaPlayer *mp, const char *url)
+{
+    assert(mp);
+    pthread_mutex_lock(&mp->mutex);
+    ffp_play_next_url(mp->ffplayer, url);
+    pthread_mutex_unlock(&mp->mutex);
+}
+
 void *ijkmp_get_weak_thiz(IjkMediaPlayer *mp)
 {
     return mp->weak_thiz;
@@ -717,11 +725,6 @@ int ijkmp_get_msg(IjkMediaPlayer *mp, AVMessage *msg, int block)
             pthread_mutex_lock(&mp->mutex);
             mp->restart = 1;
             mp->restart_from_beginning = 1;
-            if (ffp_play_next(mp->ffplayer)) {
-                msg->what = -1;
-                pthread_mutex_unlock(&mp->mutex);
-                break;
-            }
             ijkmp_change_state_l(mp, MP_STATE_COMPLETED);
             pthread_mutex_unlock(&mp->mutex);
             break;
