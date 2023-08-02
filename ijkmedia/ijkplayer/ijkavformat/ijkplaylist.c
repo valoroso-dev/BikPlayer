@@ -33,9 +33,7 @@ typedef struct {
     /* options */
     AVDictionary    *open_opts;
 
-    int             period_count;
-    int             period_index;
-    int             cur_eof;
+    int             play_next;
 } Context;
 
 static int ijkplaylist_probe(AVProbeData *probe)
@@ -104,8 +102,6 @@ static int compare_stream_props(AVStream *st, AVStream *source_st)
     if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
         if (parameters->sample_aspect_ratio.num != source_parameters->sample_aspect_ratio.num ||
             parameters->sample_aspect_ratio.den != source_parameters->sample_aspect_ratio.den ||
-            parameters->width != source_parameters->width ||
-            parameters->height != source_parameters->height ||
             parameters->format != source_parameters->format) {
             return 0;
         }
@@ -131,7 +127,7 @@ static int open_inner(AVFormatContext *avf)
     int ret = -1;
     int i   = 0;
 
-    av_log(avf, AV_LOG_INFO, "ijkplaylist: %s %s:%d", __func__, c->inner_url, c->period_index);
+    av_log(avf, AV_LOG_INFO, "ijkplaylist: %s %s", __func__, c->inner_url);
 
     new_avf = avformat_alloc_context();
     if (!new_avf) {
@@ -142,17 +138,15 @@ static int open_inner(AVFormatContext *avf)
     if (c->open_opts)
         av_dict_copy(&tmp_opts, c->open_opts, 0);
 
-    av_dict_set_int(&tmp_opts, "prefer-period-index", c->period_index, 0);
-
     new_avf->interrupt_callback = avf->interrupt_callback;
     new_avf->opaque = avf->opaque;
     ret = avformat_open_input(&new_avf, c->inner_url, NULL, &tmp_opts);
     if (ret < 0)
         goto fail;
 
-    ret = avformat_find_stream_info(new_avf, NULL);
-    if (ret < 0)
-        goto fail;
+    // ret = avformat_find_stream_info(new_avf, NULL);
+    // if (ret < 0)
+    //     goto fail;
 
     for (i = 0; i < avf->nb_streams; i++) {
         if (i >= new_avf->nb_streams) {
@@ -165,7 +159,7 @@ static int open_inner(AVFormatContext *avf)
         }
     }
 
-    if (!stream_same || avf->nb_streams == 0) {
+    if (avf->nb_streams == 0) {
         av_log(avf, AV_LOG_INFO, "ijkplaylist: realloc stream array from %d to %d\n", avf->nb_streams, new_avf->nb_streams);
         for (i = avf->nb_streams - 1; i >= 0; i--)
             ff_free_stream(avf, avf->streams[i]);
@@ -180,11 +174,15 @@ static int open_inner(AVFormatContext *avf)
             if ((ret = copy_stream_props(st, ist)) < 0)
                 goto fail;
         }
+    } else if (!stream_same) {
+        av_log(avf, AV_LOG_ERROR, "ijkplaylist: the stream array is not same\n");
+        ret = FFP_ERROR_PLAYLIST_STREAM;
+        goto fail;
     }
     avf->duration = new_avf->duration;
     avf->start_time = new_avf->start_time;
 
-    av_dump_format(avf, 0, c->inner_url, 0);
+    // av_dump_format(avf, 0, c->inner_url, 0);
 
     avformat_close_input(&c->inner);
     c->inner = new_avf;
@@ -201,21 +199,15 @@ static int ijkplaylist_read_header(AVFormatContext *avf, AVDictionary **options)
     Context    *c           = avf->priv_data;
     const char *inner_url   = NULL;
     int         ret         = -1;
-    AVDictionaryEntry *t    = NULL;
 
     av_strstart(avf->filename, "ijkplaylist:", &inner_url);
     c->inner_url = av_strdup(inner_url);
-    c->period_index = 1;
+    c->play_next = 0;
 
     if (options)
         av_dict_copy(&c->open_opts, *options, 0);
 
     ret = open_inner(avf);
-
-    if (ret == 0 && c->inner && (t = av_dict_get(c->inner->metadata, "IJK-PLAYLIST-INFO", NULL, 0))) {
-        c->period_count = atoi(t->value) / 10000;
-    }
-    av_log(avf, AV_LOG_INFO, "ijkplaylist: period_count is %d.\n", c->period_count);
 
     return ret;
 }
@@ -223,18 +215,17 @@ static int ijkplaylist_read_header(AVFormatContext *avf, AVDictionary **options)
 static int ijkplaylist_read_packet(AVFormatContext *avf, AVPacket *pkt)
 {
     Context *c   = avf->priv_data;
-    int      ret = -1;
+    int      ret = 0;
 
-    if (c->cur_eof) {
-        return AVERROR_EOF;
+    if (c->play_next) {
+        ret = open_inner(avf);
+        c->play_next = 0;
     }
-
+    if (ret < 0) {
+        return ret;
+    }
     if (c->inner) {
         ret = av_read_frame(c->inner, pkt);
-        if (ret == AVERROR_EOF && c->period_index < c->period_count) {
-            c->cur_eof = 1;
-            return AVERROR_EOF;
-        }
     }
 
     return ret;
@@ -247,17 +238,14 @@ static int ijkplaylist_read_seek(AVFormatContext *avf, int stream_index, int64_t
     int ret;
 
     if (flags == AVSEEK_FLAG_PLAYLIST_NEXT) {
-        if (c->period_index >= c->period_count) {
-            av_log(avf, AV_LOG_ERROR, "ijkplaylist: has reach to last period\n");
-            return AVERROR(ENOSYS);
+        if (strlen(avf->filename) > 0) {
+            av_free(c->inner_url);
+            c->inner_url = av_strdup(avf->filename);
+            c->play_next = 1;
+            return 0;
+        } else {
+            return AVERROR_INVALIDDATA;
         }
-        c->period_index++;
-        av_log(avf, AV_LOG_INFO, "ijkplaylist: new period %d\n", c->period_index);
-        open_inner(avf);
-        return 0;
-    } else if (flags == AVSEEK_FLAG_PLAYLIST_START) {
-        c->cur_eof = 0;
-        return 0;
     }
 
     seek_pos_msec = av_rescale_rnd(sample_time, 1000,
@@ -265,9 +253,6 @@ static int ijkplaylist_read_seek(AVFormatContext *avf, int stream_index, int64_t
                                     flags & AVSEEK_FLAG_BACKWARD ? AV_ROUND_DOWN : AV_ROUND_UP);
     ff_read_frame_flush(c->inner);
     ret = av_seek_frame(c->inner, -1, seek_pos_msec * 1000, flags);
-    if (ret >= 0) {
-        c->cur_eof = 0;
-    }
     return ret;
 }
 

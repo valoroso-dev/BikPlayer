@@ -209,6 +209,7 @@ long            ijkmp_get_duration(IjkMediaPlayer *mp);
 long            ijkmp_get_playable_duration(IjkMediaPlayer *mp);
 void            ijkmp_set_loop(IjkMediaPlayer *mp, int loop);
 int             ijkmp_get_loop(IjkMediaPlayer *mp);
+void            ijkmp_play_next_data_source(IjkMediaPlayer *mp, const char *url);
 
 void           *ijkmp_get_weak_thiz(IjkMediaPlayer *mp);
 void           *ijkmp_set_weak_thiz(IjkMediaPlayer *mp, void *weak_thiz);

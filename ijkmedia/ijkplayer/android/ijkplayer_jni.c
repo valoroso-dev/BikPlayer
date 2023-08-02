@@ -1247,6 +1247,27 @@ LABEL_RETURN:
     return;
 }
 
+static void
+IjkMediaPlayer_playNextDataSource(
+    JNIEnv *env, jobject thiz, jstring path)
+{
+    MPTRACE("%s\n", __func__);
+    const char *c_path = NULL;
+    IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
+    JNI_CHECK_GOTO(path, env, "java/lang/IllegalArgumentException", "mpjni: playNextDataSource: null path", LABEL_RETURN);
+    JNI_CHECK_GOTO(mp, env, "java/lang/IllegalStateException", "mpjni: playNextDataSource: null mp", LABEL_RETURN);
+
+    c_path = (*env)->GetStringUTFChars(env, path, NULL );
+    JNI_CHECK_GOTO(c_path, env, "java/lang/OutOfMemoryError", "mpjni: playNextDataSource: path.string oom", LABEL_RETURN);
+
+    ALOGV("playNextDataSource: path %s", c_path);
+    ijkmp_play_next_data_source(mp, c_path);
+    (*env)->ReleaseStringUTFChars(env, path, c_path);
+
+LABEL_RETURN:
+    ijkmp_dec_ref_p(&mp);
+}
+
 
 
 
@@ -1300,6 +1321,7 @@ static JNINativeMethod g_methods[] = {
 
     { "native_setLogLevel",     "(I)V",                     (void *) IjkMediaPlayer_native_setLogLevel },
     { "_setFrameAtTime",        "(Ljava/lang/String;JJII)V", (void *) IjkMediaPlayer_setFrameAtTime },
+    { "_playNextDataSource",    "(Ljava/lang/String;)V",    (void *) IjkMediaPlayer_playNextDataSource },
 };
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
