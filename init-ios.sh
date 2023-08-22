@@ -18,7 +18,7 @@
 
 IJK_FFMPEG_UPSTREAM=https://github.com/valoroso-dev/FFmpeg.git
 IJK_FFMPEG_FORK=https://github.com/valoroso-dev/FFmpeg.git
-IJK_FFMPEG_COMMIT=ff4.0.6--20230731--001
+IJK_FFMPEG_COMMIT=ff4.0.6--20230822--001
 IJK_FFMPEG_LOCAL_REPO=extra/ffmpeg
 
 IJK_GASP_UPSTREAM=https://github.com/valoroso-dev/gas-preprocessor.git
