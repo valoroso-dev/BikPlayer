@@ -43,13 +43,13 @@ allprojects {
 
 dependencies {
     # required, enough for most devices.
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-java:1.3.0'
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-common:1.3.0'
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.0'
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-arm64:1.3.0'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-java:1.3.3'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-common:1.3.3'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.3'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-arm64:1.3.3'
 
     # ExoPlayer as IMediaPlayer: optional, experimental
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-exo:1.3.0'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-exo:1.3.3'
 }
 ```
 - iOS

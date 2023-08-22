@@ -88,17 +88,17 @@ dependencies {
     all64Implementation project(':ijkplayer-x86')
     all64Implementation project(':ijkplayer-x86_64')
 
-//    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-java:1.3.0'
-//    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-common:1.3.0'
-//    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-exo:1.3.0'
+//    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-java:1.3.3'
+//    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-common:1.3.3'
+//    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-exo:1.3.3'
 //
-//    all32Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv5:1.3.0'
-//    all32Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.0'
-//    all32Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-x86:1.3.0'
+//    all32Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv5:1.3.3'
+//    all32Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.3'
+//    all32Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-x86:1.3.3'
 //
-//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv5:1.3.0'
-//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.0'
-//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-arm64:1.3.0'
-//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-x86:1.3.0'
-//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-x86_64:1.3.0'
+//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv5:1.3.3'
+//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.3'
+//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-arm64:1.3.3'
+//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-x86:1.3.3'
+//    all64Implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-x86_64:1.3.3'
 }

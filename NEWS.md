@@ -1,3 +1,10 @@
+tag 1.3.1
+--------------------------------
+- ffmpeg: upgrade to 4.0.6
+- android: support dash protocol
+- ios: support fps via iOS AVPlayer
+- ijkplayer: fix some bugs
+
 tag next
 
 - support DRM with ExoPlayer
