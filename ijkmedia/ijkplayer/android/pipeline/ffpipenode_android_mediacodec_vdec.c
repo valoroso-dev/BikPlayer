@@ -634,6 +634,9 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
                 }
                 av_usleep(10 * 1000);
             }
+            if (!ffp->first_video_frame_rendered) {
+                ffp_notify_msg1(ffp, FFP_MSG_DRM_KEY_LOADED);
+            }
         }
 
         // reconfigure surface if surface changed
@@ -999,6 +1002,9 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
                     goto fail;
                 }
                 av_usleep(10 * 1000);
+            }
+            if (!ffp->first_video_frame_rendered) {
+                ffp_notify_msg1(ffp, FFP_MSG_DRM_KEY_LOADED);
             }
         }
 

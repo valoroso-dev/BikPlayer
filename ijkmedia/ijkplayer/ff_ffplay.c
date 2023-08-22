@@ -3414,6 +3414,7 @@ void watchout_abnormal_stat(FFPlayer *ffp, FFWatchState *watch, FFStatistic *cur
 static int stat_thread(void *arg)
 {
     FFPlayer *ffp = arg;
+    VideoState *is = ffp->is;
     SDL_cond *stat_cond = SDL_CreateCond();
     SDL_mutex *stat_mutex = SDL_CreateMutex();
     FFWatchState *watchState = NULL;
@@ -3433,7 +3434,7 @@ static int stat_thread(void *arg)
     FFStatistic *cur_stat = &stats[1];
     *prev_stat = ffp->stat;
     int wait_count = 0;
-    while (!ffp->is->abort_request)
+    while (!is->abort_request)
     {
         SDL_CondWaitTimeout(stat_cond, stat_mutex, 50);
         if (wait_count++ <= 100) {
@@ -3539,10 +3540,10 @@ static int av_format_control_callback(struct AVFormatContext *s, int type, void 
     int frame_index = data_size == 4 ? (*((int*)data)) : 0;
     if (type == AVMEDIA_TYPE_VIDEO) {
         ALOGD("first video frame received at frame index %d", frame_index);
-        ffp_notify_msg1((FFPlayer*)s->owner, FFP_MSG_READ_FIRST_VIDEO_FRAME);
+        ffp_notify_msg2((FFPlayer*)s->owner, FFP_MSG_READ_FIRST_VIDEO_FRAME, frame_index);
     } else if (type == AVMEDIA_TYPE_AUDIO) {
         ALOGD("first audio frame received at frame index %d", frame_index);
-        ffp_notify_msg1((FFPlayer*)s->owner, FFP_MSG_READ_FIRST_AUDIO_FRAME);
+        ffp_notify_msg2((FFPlayer*)s->owner, FFP_MSG_READ_FIRST_AUDIO_FRAME, frame_index);
     }
     return 0;
 }
@@ -3620,6 +3621,9 @@ static int read_thread(void *arg)
         ffp->drm_info_mutex = SDL_CreateMutex();
         ic->drm_update_callback.callback = drm_update_callback;
         ic->drm_update_callback.opaque = ffp;
+        ic->drm_source = 1;
+    } else {
+        ic->drm_source = 0;
     }
 
     if (ffp->iformat_name)
@@ -3630,19 +3634,19 @@ static int read_thread(void *arg)
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
     if (err < 0) {
         print_error(is->filename, err);
-        ret = -1;
+        ret = err;
         goto fail;
     }
     ffp_notify_msg1(ffp, FFP_MSG_OPEN_INPUT);
     if (ffp->is_drm_source && ffp->drm_info && strlen(ffp->drm_info) > 0) {
         av_log(NULL, AV_LOG_WARNING, "drm info update %s\n", ffp->drm_info);
         if (!ffpipeline_check_support_drm(ffp->pipeline, ffp)) {
-            ret = -1;
+            ret = FFP_ERROR_DRM_DEVICE_UNSUPPORT;
             goto fail;
         }
         if (!ffp_update_drm_init_info(ffp, ffp->drm_info, strlen(ffp->drm_info), 2)) {
             av_log(NULL, AV_LOG_ERROR, "%s: ffp_update_drm_init_info fail\n", __func__);
-            ret = -1;
+            ret = FFP_ERROR_DRM_ACQUIRE_FAIL;
             goto fail;
         }
         if (strstr(ffp->drm_info, "audio,")) {
@@ -3671,12 +3675,10 @@ static int read_thread(void *arg)
     //int orig_nb_streams;
     //opts = setup_find_stream_info_opts(ic, ffp->codec_opts);
     //orig_nb_streams = ic->nb_streams;
-    int can_drop_frame = 1;
     int packet_buffering_temp = ffp->packet_buffering;
     if (ffp->live_quick_start) {
         ffp->packet_buffering =0;
         ic->live_quick_start = 1;
-        can_drop_frame = ffp->is_drm_source ? 0 : 1;//drm decrypt desped on previous frame, so cant drop frame
     }
 
     if (ffp->find_stream_info) {
@@ -3889,7 +3891,7 @@ static int read_thread(void *arg)
     if (is->video_stream < 0 && is->audio_stream < 0) {
         av_log(NULL, AV_LOG_FATAL, "Failed to open file '%s' or configure filtergraph\n",
                is->filename);
-        ret = -1;
+        ret = FFP_ERROR_INVALID_STREAM;
         goto fail;
     }
     if (is->audio_stream >= 0 && ffp->av_sync_type == AV_SYNC_AUDIO_MASTER) {
@@ -4108,15 +4110,10 @@ static int read_thread(void *arg)
         ret = av_read_frame(ic, pkt);
         if (ffp->live_quick_start) {
             if (ffp->find_stream_keyframe_ok == 0) {
-                if (!(pkt->stream_index == st_index[AVMEDIA_TYPE_VIDEO] && (pkt->flags & AV_PKT_FLAG_KEY))) {
-                    if (can_drop_frame) continue;
-                } else {
+                if (pkt->stream_index == st_index[AVMEDIA_TYPE_VIDEO] && (pkt->flags & AV_PKT_FLAG_KEY)) {
                     ffp->find_stream_keyframe_ok = 1;
                 }
             } else {
-                if (ffp->find_stream_keyframe_ok == 0) {
-                    ffp->find_stream_keyframe_ok = 1;
-                }
                 if (frame_count++>20 && ffp->packet_buffering != packet_buffering_temp) {
                     ffp->packet_buffering = packet_buffering_temp;
                 }

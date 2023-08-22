@@ -232,7 +232,7 @@ static const AVOption ffp_context_options[] = {
     { "audio-write-policy",             "audiotrack write policy",
         OPTION_OFFSET(audio_write_policy),      OPTION_INT(1, 0, 100) },
     { "default-sample-rate",                "use default sample rate while find stream info fail",
-        OPTION_OFFSET(dfl_sample_rate),     OPTION_INT(44100, 0, INT_MAX) },
+        OPTION_OFFSET(dfl_sample_rate),     OPTION_INT(48000, 0, INT_MAX) },
     { "default-nb-channels",                "use default nb channels while find stream info fail",
         OPTION_OFFSET(dfl_nb_channels),     OPTION_INT(2, 0, 32) },
     { NULL }

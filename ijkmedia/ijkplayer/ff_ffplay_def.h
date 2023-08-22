@@ -437,7 +437,7 @@ typedef struct VideoState {
 
     Uint64 player_startup_time;
     // startup timestamp
-    int64_t sla_timestamp[9];
+    int64_t sla_timestamp[10];
     int64_t high_buffering_count;
 } VideoState;
 
@@ -940,9 +940,9 @@ inline static void report_startup_info(FFPlayer *ffp)
     //when video render ,report data
     char buff[256] = {0};
     snprintf(buff,256,"{open_input:%lld, audio_first_frame:%lld, video_first_frame:%lld, find_streaminfo:%lld, component_open:%lld, "
-                      "audio_decode:%lld, audio_render:%lld, video_decode:%lld, video_render:%lld}",ffp->is->sla_timestamp[0],
-                       ffp->is->sla_timestamp[2],ffp->is->sla_timestamp[1],ffp->is->sla_timestamp[3],ffp->is->sla_timestamp[4],
-                       ffp->is->sla_timestamp[5],ffp->is->sla_timestamp[7],ffp->is->sla_timestamp[6],ffp->is->sla_timestamp[8]);
+                      "audio_decode:%lld, audio_render:%lld, video_decode:%lld, video_render:%lld, key_load:%lld}",
+                       ffp->is->sla_timestamp[0],ffp->is->sla_timestamp[2],ffp->is->sla_timestamp[1],ffp->is->sla_timestamp[3],ffp->is->sla_timestamp[4],
+                       ffp->is->sla_timestamp[5],ffp->is->sla_timestamp[7],ffp->is->sla_timestamp[6],ffp->is->sla_timestamp[8],ffp->is->sla_timestamp[9]);
     ALOGI("[sla] %s \n", buff);
     msg_queue_put_simple4(&ffp->msg_queue, FFP_MSG_STARTUP_INFO, 0, 0, buff, (int)strlen(buff) + 1);
 }
@@ -953,14 +953,6 @@ inline static void ffp_notify_msg1(FFPlayer *ffp, int what) {
             case FFP_MSG_OPEN_INPUT:
                 print_ijk_startup_msg("FFP_MSG_OPEN_INPUT", ffp->is->player_startup_time);
                 ffp->is->sla_timestamp[0] = 0;
-                break;
-            case FFP_MSG_READ_FIRST_VIDEO_FRAME:
-                print_ijk_startup_msg("FFP_MSG_READ_FIRST_VIDEO_FRAME", ffp->is->player_startup_time);
-                ffp->is->sla_timestamp[1] = SDL_GetTickHR() - ffp->is->player_startup_time;
-                break;
-            case FFP_MSG_READ_FIRST_AUDIO_FRAME:
-                print_ijk_startup_msg("FFP_MSG_READ_FIRST_AUDIO_FRAME", ffp->is->player_startup_time);
-                ffp->is->sla_timestamp[2] = SDL_GetTickHR() - ffp->is->player_startup_time;
                 break;
             case FFP_MSG_FIND_STREAM_INFO:
                 print_ijk_startup_msg("FFP_MSG_FIND_STREAM_INFO", ffp->is->player_startup_time);
@@ -992,12 +984,28 @@ inline static void ffp_notify_msg1(FFPlayer *ffp, int what) {
                     report_startup_info(ffp);
                 }
                 break;
+            case FFP_MSG_DRM_KEY_LOADED:
+                print_ijk_startup_msg("FFP_MSG_DRM_KEY_LOADED", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[9] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
         }
     }
 }
 
 inline static void ffp_notify_msg2(FFPlayer *ffp, int what, int arg1) {
     msg_queue_put_simple3(&ffp->msg_queue, what, arg1, 0);
+    if (ffp->is) {
+        switch(what) {
+            case FFP_MSG_READ_FIRST_VIDEO_FRAME:
+                print_ijk_startup_msg("FFP_MSG_READ_FIRST_VIDEO_FRAME", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[1] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+            case FFP_MSG_READ_FIRST_AUDIO_FRAME:
+                print_ijk_startup_msg("FFP_MSG_READ_FIRST_AUDIO_FRAME", ffp->is->player_startup_time);
+                ffp->is->sla_timestamp[2] = SDL_GetTickHR() - ffp->is->player_startup_time;
+                break;
+        }
+    }
 }
 
 inline static void ffp_notify_msg3(FFPlayer *ffp, int what, int arg1, int arg2) {

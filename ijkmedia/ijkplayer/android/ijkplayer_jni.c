@@ -1040,12 +1040,16 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_OPEN_INPUT, 0);
             break;
         case FFP_MSG_READ_FIRST_VIDEO_FRAME:
-            MPTRACE("FFP_MSG_READ_FIRST_VIDEO_FRAME:\n");
-            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_READ_FIRST_VIDEO_FRAME, 0);
+            MPTRACE("FFP_MSG_READ_FIRST_VIDEO_FRAME:%d\n", msg.arg1);
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_READ_FIRST_VIDEO_FRAME, msg.arg1);
             break;
         case FFP_MSG_READ_FIRST_AUDIO_FRAME:
-            MPTRACE("FFP_MSG_READ_FIRST_AUDIO_FRAME:\n");
-            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_READ_FIRST_AUDIO_FRAME, 0);
+            MPTRACE("FFP_MSG_READ_FIRST_AUDIO_FRAME:%d\n", msg.arg1);
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_READ_FIRST_AUDIO_FRAME, msg.arg1);
+            break;
+        case FFP_MSG_DRM_KEY_LOADED:
+            MPTRACE("FFP_MSG_DRM_KEY_LOADED:\n");
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_DRM_KEY_LOADED, 0);
             break;
         case FFP_MSG_FIND_STREAM_INFO:
             MPTRACE("FFP_MSG_FIND_STREAM_INFO:\n");

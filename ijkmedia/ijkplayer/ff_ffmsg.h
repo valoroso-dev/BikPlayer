@@ -43,6 +43,7 @@
 #define FFP_MSG_AUDIO_SEEK_RENDERING_START  411
 #define FFP_MSG_READ_FIRST_VIDEO_FRAME      412     /* find_stream_info */
 #define FFP_MSG_READ_FIRST_AUDIO_FRAME      413     /* find_stream_info */
+#define FFP_MSG_DRM_KEY_LOADED              414     /* vcodec drm key loaded */
 
 #define FFP_MSG_BUFFERING_START             500
 #define FFP_MSG_BUFFERING_END               501
@@ -126,5 +127,8 @@
 #define FFP_ERROR_VIDEO_DECODER_OPEN_ERROR              999    // open video decoder fail
 #define FFP_ERROR_NO_AUDIO_RECV                         10002  // haven't receive audio for a while
 #define FFP_ERROR_NO_VIDEO_RECV                         10003  // haven't receive video for a while
+#define FFP_ERROR_INVALID_STREAM                        10006  // there is not a valid stream
+#define FFP_ERROR_DRM_DEVICE_UNSUPPORT                  10010  // device unsupport drm
+#define FFP_ERROR_DRM_ACQUIRE_FAIL                      10011  // drm key aquire fail
 
 #endif
