@@ -141,6 +141,7 @@ public class InfoHudViewHolder {
                     long videoCachedBytes    = mp.getVideoCachedBytes();
                     long audioCachedBytes    = mp.getAudioCachedBytes();
                     long tcpSpeed            = mp.getTcpSpeed();
+                    long bandwidth           = mp.getCurrentBandwidth();
                     long bitRate             = mp.getBitRate();
                     long seekLoadDuration    = mp.getSeekLoadDuration();
 
@@ -150,6 +151,7 @@ public class InfoHudViewHolder {
                     setRowValue(R.string.seek_cost, String.format(Locale.US, "%d ms", mSeekCost));
                     setRowValue(R.string.seek_load_cost, String.format(Locale.US, "%d ms", seekLoadDuration));
                     setRowValue(R.string.tcp_speed, String.format(Locale.US, "%s", formatedSpeed(tcpSpeed, 1000)));
+                    setRowValue(R.string.bandwidth, String.format(Locale.US, "%s", formatedSpeed(bandwidth, 1000)));
                     setRowValue(R.string.bit_rate, String.format(Locale.US, "%.2f kbs", bitRate/1000f));
 
                     mHandler.removeMessages(MSG_UPDATE_HUD);

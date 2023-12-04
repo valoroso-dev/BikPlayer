@@ -16,9 +16,11 @@
 # limitations under the License.
 #
 
-IJK_J4A_UPSTREAM=https://github.com/valoroso-dev/jni4android.git
-IJK_J4A_FORK=https://github.com/valoroso-dev/jni4android.git
-IJK_J4A_COMMIT=v0.0.2
+source ./init-repo-url.sh
+
+IJK_J4A_UPSTREAM=$BIK_PLAYER_J4A_UPSTREAM
+IJK_J4A_FORK=$BIK_PLAYER_J4A_FORK
+IJK_J4A_COMMIT=$BIK_PLAYER_J4A_COMMIT
 IJK_J4A_LOCAL_REPO=extra/jni4android
 
 set -e

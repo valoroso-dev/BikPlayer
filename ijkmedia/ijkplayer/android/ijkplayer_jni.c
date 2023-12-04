@@ -819,7 +819,8 @@ inject_callback(void *opaque, int what, void *data, size_t data_size)
         case AVAPP_EVENT_WILL_HTTP_OPEN:
         case AVAPP_EVENT_DID_HTTP_OPEN:
         case AVAPP_EVENT_WILL_HTTP_SEEK:
-        case AVAPP_EVENT_DID_HTTP_SEEK: {
+        case AVAPP_EVENT_DID_HTTP_SEEK:
+        case AVAPP_EVENT_DID_HTTP_READ_END: {
             AVAppHttpEvent *real_data = (AVAppHttpEvent *) data;
             jbundle = J4AC_Bundle__Bundle__catchAll(env);
             if (!jbundle) {
@@ -924,6 +925,7 @@ static jobject get_media_crypto_callback(void *opaque, int type)
     JNIEnv *env = NULL;
     jobject weak_this = (jobject) opaque;
     jobject media_crypto = NULL;
+    jobject global_media_crypto = NULL;
 
     if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
         ALOGE("%s: SetupThreadEnv failed\n", __func__);
@@ -936,8 +938,17 @@ static jobject get_media_crypto_callback(void *opaque, int type)
         goto fail;
     }
 
+    if (media_crypto) {
+        global_media_crypto = (*env)->NewGlobalRef(env, media_crypto);
+        if (J4A_ExceptionCheck__catchAll(env) || !global_media_crypto) {
+            ALOGE("%s: create global crypto failed\n", __func__);
+            goto fail;
+        }
+        ALOGI("%s: create global crypto %p\n", __func__, global_media_crypto);
+    }
+
 fail:
-    return media_crypto;
+    return global_media_crypto;
 }
 
 static int get_drm_session_state_callback(void *opaque, int type, int flag)
@@ -1050,6 +1061,18 @@ static void message_loop_n(JNIEnv *env, IjkMediaPlayer *mp)
         case FFP_MSG_DRM_KEY_LOADED:
             MPTRACE("FFP_MSG_DRM_KEY_LOADED:\n");
             post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_DRM_KEY_LOADED, 0);
+            break;
+        case FFP_MSG_ACCELERATED_CODEC_FAIL:
+            MPTRACE("FFP_MSG_ACCELERATED_CODEC_FAIL:\n");
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_ACCELERATED_CODEC_FAIL, msg.arg1);
+            break;
+        case FFP_MSG_STREAM_INFO_CHANGED:
+            MPTRACE("FFP_MSG_STREAM_INFO_CHANGED:\n");
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_STREAM_INFO_CHANGED, 0);
+            break;
+        case FFP_MSG_READ_STREAM_CHANGED:
+            MPTRACE("FFP_MSG_READ_STREAM_CHANGED:%d\n", msg.arg1);
+            post_event(env, weak_thiz, MEDIA_INFO, MEDIA_INFO_READ_STREAM_CHANGED, msg.arg1);
             break;
         case FFP_MSG_FIND_STREAM_INFO:
             MPTRACE("FFP_MSG_FIND_STREAM_INFO:\n");
@@ -1233,6 +1256,24 @@ IjkMediaPlayer_native_setLogLevel(JNIEnv *env, jclass clazz, jint level)
 }
 
 static void
+IjkMediaPlayer_native_setDumpRoot(JNIEnv *env, jclass clazz, jstring path)
+{
+    MPTRACE("%s\n", __func__);
+    const char *c_path = NULL;
+    JNI_CHECK_GOTO(path, env, "java/lang/IllegalArgumentException", "mpjni: setDumpRoot: null path", LABEL_RETURN);
+
+    c_path = (*env)->GetStringUTFChars(env, path, NULL );
+    JNI_CHECK_GOTO(c_path, env, "java/lang/OutOfMemoryError", "mpjni: setDumpRoot: path.string oom", LABEL_RETURN);
+
+    ALOGV("setDumpRoot: path %s", c_path);
+    ijkmp_global_set_dump_root(c_path);
+    (*env)->ReleaseStringUTFChars(env, path, c_path);
+
+LABEL_RETURN:
+    return;
+}
+
+static void
 IjkMediaPlayer_setFrameAtTime(JNIEnv *env, jobject thiz, jstring path, jlong start_time, jlong end_time, jint num, jint definition) {
     IjkMediaPlayer *mp = jni_get_media_player(env, thiz);
     const char *c_path = NULL;
@@ -1324,6 +1365,7 @@ static JNINativeMethod g_methods[] = {
     { "native_profileEnd",      "()V",                      (void *) IjkMediaPlayer_native_profileEnd },
 
     { "native_setLogLevel",     "(I)V",                     (void *) IjkMediaPlayer_native_setLogLevel },
+    { "native_setDumpRoot",     "(Ljava/lang/String;)V",    (void *) IjkMediaPlayer_native_setDumpRoot },
     { "_setFrameAtTime",        "(Ljava/lang/String;JJII)V", (void *) IjkMediaPlayer_setFrameAtTime },
     { "_playNextDataSource",    "(Ljava/lang/String;)V",    (void *) IjkMediaPlayer_playNextDataSource },
 };

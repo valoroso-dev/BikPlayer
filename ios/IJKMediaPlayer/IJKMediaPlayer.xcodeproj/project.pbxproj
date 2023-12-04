@@ -170,17 +170,25 @@
 		54CF8A521E15287D00309DD5 /* ijktree.h in Headers */ = {isa = PBXBuildFile; fileRef = 54CF8A461E15287D00309DD5 /* ijktree.h */; };
 		54CF8A531E15287D00309DD5 /* ijkutils.c in Sources */ = {isa = PBXBuildFile; fileRef = 54CF8A471E15287D00309DD5 /* ijkutils.c */; };
 		54CF8A541E15287D00309DD5 /* ijkutils.h in Headers */ = {isa = PBXBuildFile; fileRef = 54CF8A481E15287D00309DD5 /* ijkutils.h */; };
-		B417F8DE24F7C3B500D159BB /* cJSON.h in Headers */ = {isa = PBXBuildFile; fileRef = B417F8DB24F7C3B400D159BB /* cJSON.h */; };
-		B417F8E224F7C56C00D159BB /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = B417F8E124F7C56C00D159BB /* cJSON.c */; };
-		B4449BD6250095700074CEDC /* ijklas.h in Headers */ = {isa = PBXBuildFile; fileRef = B4449BD4250095700074CEDC /* ijklas.h */; };
-		B4449BD7250095700074CEDC /* ijklas.c in Sources */ = {isa = PBXBuildFile; fileRef = B4449BD5250095700074CEDC /* ijklas.c */; };
 		A24ABD9029358F3B00E2054D /* IJKContentKeyManager.h in Headers */ = {isa = PBXBuildFile; fileRef = A24ABD8E29358F3B00E2054D /* IJKContentKeyManager.h */; };
 		A24ABD9129358F3B00E2054D /* IJKContentKeyManager.h in Headers */ = {isa = PBXBuildFile; fileRef = A24ABD8E29358F3B00E2054D /* IJKContentKeyManager.h */; };
 		A24ABD9229358F3B00E2054D /* IJKContentKeyManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A24ABD8F29358F3B00E2054D /* IJKContentKeyManager.m */; };
 		A24ABD9329358F3B00E2054D /* IJKContentKeyManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A24ABD8F29358F3B00E2054D /* IJKContentKeyManager.m */; };
+		A27DCE392AE8B00900F07666 /* IJKSlidingPercentile.h in Headers */ = {isa = PBXBuildFile; fileRef = A27DCE372AE8B00800F07666 /* IJKSlidingPercentile.h */; };
+		A27DCE3A2AE8B00900F07666 /* IJKSlidingPercentile.h in Headers */ = {isa = PBXBuildFile; fileRef = A27DCE372AE8B00800F07666 /* IJKSlidingPercentile.h */; };
+		A27DCE3B2AE8B00900F07666 /* IJKSlidingPercentile.m in Sources */ = {isa = PBXBuildFile; fileRef = A27DCE382AE8B00900F07666 /* IJKSlidingPercentile.m */; };
+		A27DCE3C2AE8B00900F07666 /* IJKSlidingPercentile.m in Sources */ = {isa = PBXBuildFile; fileRef = A27DCE382AE8B00900F07666 /* IJKSlidingPercentile.m */; };
+		A27DCE472AE8FA9500F07666 /* IJKBandwidthMeter.h in Headers */ = {isa = PBXBuildFile; fileRef = A27DCE452AE8FA9500F07666 /* IJKBandwidthMeter.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A27DCE482AE8FA9500F07666 /* IJKBandwidthMeter.h in Headers */ = {isa = PBXBuildFile; fileRef = A27DCE452AE8FA9500F07666 /* IJKBandwidthMeter.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A27DCE492AE8FA9500F07666 /* IJKBandwidthMeter.m in Sources */ = {isa = PBXBuildFile; fileRef = A27DCE462AE8FA9500F07666 /* IJKBandwidthMeter.m */; };
+		A27DCE4A2AE8FA9500F07666 /* IJKBandwidthMeter.m in Sources */ = {isa = PBXBuildFile; fileRef = A27DCE462AE8FA9500F07666 /* IJKBandwidthMeter.m */; };
 		A2812D9A2A384E13009969CB /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A2812D992A384E13009969CB /* libz.tbd */; };
 		A2BA2B8E29364CA500AA3AED /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A2BA2B8D29364CA500AA3AED /* libcrypto.a */; };
 		A2BA2B9029364CB500AA3AED /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A2BA2B8F29364CB500AA3AED /* libssl.a */; };
+		B417F8DE24F7C3B500D159BB /* cJSON.h in Headers */ = {isa = PBXBuildFile; fileRef = B417F8DB24F7C3B400D159BB /* cJSON.h */; };
+		B417F8E224F7C56C00D159BB /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = B417F8E124F7C56C00D159BB /* cJSON.c */; };
+		B4449BD6250095700074CEDC /* ijklas.h in Headers */ = {isa = PBXBuildFile; fileRef = B4449BD4250095700074CEDC /* ijklas.h */; };
+		B4449BD7250095700074CEDC /* ijklas.c in Sources */ = {isa = PBXBuildFile; fileRef = B4449BD5250095700074CEDC /* ijklas.c */; };
 		E607FFE11B7B62E3005F11A6 /* IJKDeviceModel.m in Sources */ = {isa = PBXBuildFile; fileRef = E607FFDF1B7B60F9005F11A6 /* IJKDeviceModel.m */; };
 		E653C6F61BCE5A750016835A /* libavcodec.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E653C6EF1BCE5A750016835A /* libavcodec.a */; };
 		E653C6F81BCE5A750016835A /* libavfilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E653C6F01BCE5A750016835A /* libavfilter.a */; };
@@ -333,15 +341,19 @@
 		54CF8A461E15287D00309DD5 /* ijktree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ijktree.h; sourceTree = "<group>"; };
 		54CF8A471E15287D00309DD5 /* ijkutils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ijkutils.c; sourceTree = "<group>"; };
 		54CF8A481E15287D00309DD5 /* ijkutils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ijkutils.h; sourceTree = "<group>"; };
+		A24ABD8E29358F3B00E2054D /* IJKContentKeyManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = IJKContentKeyManager.h; path = IJKMediaPlayer/IJKContentKeyManager.h; sourceTree = "<group>"; };
+		A24ABD8F29358F3B00E2054D /* IJKContentKeyManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = IJKContentKeyManager.m; path = IJKMediaPlayer/IJKContentKeyManager.m; sourceTree = "<group>"; };
+		A27DCE372AE8B00800F07666 /* IJKSlidingPercentile.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IJKSlidingPercentile.h; sourceTree = "<group>"; };
+		A27DCE382AE8B00900F07666 /* IJKSlidingPercentile.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = IJKSlidingPercentile.m; sourceTree = "<group>"; };
+		A27DCE452AE8FA9500F07666 /* IJKBandwidthMeter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IJKBandwidthMeter.h; sourceTree = "<group>"; };
+		A27DCE462AE8FA9500F07666 /* IJKBandwidthMeter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = IJKBandwidthMeter.m; sourceTree = "<group>"; };
+		A2812D992A384E13009969CB /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/usr/lib/libz.tbd; sourceTree = DEVELOPER_DIR; };
+		A2BA2B8D29364CA500AA3AED /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../build/universal/lib/libcrypto.a; sourceTree = "<group>"; };
+		A2BA2B8F29364CB500AA3AED /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../build/universal/lib/libssl.a; sourceTree = "<group>"; };
 		B417F8DB24F7C3B400D159BB /* cJSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cJSON.h; sourceTree = "<group>"; };
 		B417F8E124F7C56C00D159BB /* cJSON.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = cJSON.c; sourceTree = "<group>"; };
 		B4449BD4250095700074CEDC /* ijklas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ijklas.h; sourceTree = "<group>"; };
 		B4449BD5250095700074CEDC /* ijklas.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ijklas.c; sourceTree = "<group>"; };
-		A24ABD8E29358F3B00E2054D /* IJKContentKeyManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = IJKContentKeyManager.h; path = IJKMediaPlayer/IJKContentKeyManager.h; sourceTree = "<group>"; };
-		A24ABD8F29358F3B00E2054D /* IJKContentKeyManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = IJKContentKeyManager.m; path = IJKMediaPlayer/IJKContentKeyManager.m; sourceTree = "<group>"; };
-		A2812D992A384E13009969CB /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/usr/lib/libz.tbd; sourceTree = DEVELOPER_DIR; };
-		A2BA2B8D29364CA500AA3AED /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../build/universal/lib/libcrypto.a; sourceTree = "<group>"; };
-		A2BA2B8F29364CB500AA3AED /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../build/universal/lib/libssl.a; sourceTree = "<group>"; };
 		E607FFDE1B7B60F9005F11A6 /* IJKDeviceModel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IJKDeviceModel.h; path = IJKMediaPlayer/IJKDeviceModel.h; sourceTree = "<group>"; };
 		E607FFDF1B7B60F9005F11A6 /* IJKDeviceModel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = IJKDeviceModel.m; path = IJKMediaPlayer/IJKDeviceModel.m; sourceTree = "<group>"; };
 		E62139BC180FA89A00553533 /* IJKFFOptions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IJKFFOptions.h; sourceTree = "<group>"; };
@@ -706,6 +718,10 @@
 				E6F727BA17F2D9D30043623F /* IJKFFMoviePlayerDef.m */,
 				E62139BC180FA89A00553533 /* IJKFFOptions.h */,
 				E62139BD180FA89A00553533 /* IJKFFOptions.m */,
+				A27DCE372AE8B00800F07666 /* IJKSlidingPercentile.h */,
+				A27DCE382AE8B00900F07666 /* IJKSlidingPercentile.m */,
+				A27DCE452AE8FA9500F07666 /* IJKBandwidthMeter.h */,
+				A27DCE462AE8FA9500F07666 /* IJKBandwidthMeter.m */,
 				E6903FCC17EAFC6100CFD954 /* ijkmedia */,
 				E6903EBF17EAF6C500CFD954 /* Supporting Files */,
 			);
@@ -1007,7 +1023,9 @@
 				549385C41E640456001AE08D /* IJKMediaFrameworkWithSSL.h in Headers */,
 				5450B0291E63EA4300568494 /* ff_ffplay_options.h in Headers */,
 				5450B02B1E63EA4300568494 /* IJKKVOController.h in Headers */,
+				A27DCE482AE8FA9500F07666 /* IJKBandwidthMeter.h in Headers */,
 				5450B02C1E63EA4300568494 /* IJKNotificationManager.h in Headers */,
+				A27DCE3A2AE8B00900F07666 /* IJKSlidingPercentile.h in Headers */,
 				5450B02D1E63EA4300568494 /* ijkthreadpool.h in Headers */,
 				5450B02E1E63EA4300568494 /* ijkiomanager.h in Headers */,
 				33BA6FC0254BC4D9004EB9F2 /* ijklas.h in Headers */,
@@ -1050,7 +1068,9 @@
 				E6C459BD1C7089AB004831EC /* ff_ffplay_options.h in Headers */,
 				E654EA8F1B6B27E600B0F2D0 /* IJKMediaFramework.h in Headers */,
 				E6C2E7BE1C92BD3600E59229 /* IJKKVOController.h in Headers */,
+				A27DCE472AE8FA9500F07666 /* IJKBandwidthMeter.h in Headers */,
 				E69808A01C7EB2040048A46C /* IJKNotificationManager.h in Headers */,
+				A27DCE392AE8B00900F07666 /* IJKSlidingPercentile.h in Headers */,
 				B417F8DE24F7C3B500D159BB /* cJSON.h in Headers */,
 				54CF8A501E15287D00309DD5 /* ijkthreadpool.h in Headers */,
 				54CF8A391E1526F800309DD5 /* ijkiomanager.h in Headers */,
@@ -1244,6 +1264,7 @@
 				5450AFCD1E63EA4300568494 /* ijkplayer_ios.m in Sources */,
 				5450AFCE1E63EA4300568494 /* ffpipeline_ios.c in Sources */,
 				5450AFCF1E63EA4300568494 /* ijkioprotocol.c in Sources */,
+				A27DCE3C2AE8B00900F07666 /* IJKSlidingPercentile.m in Sources */,
 				5450AFD01E63EA4300568494 /* ijksdl_vout_dummy.c in Sources */,
 				5450AFD11E63EA4300568494 /* renderer_yuv420sp.c in Sources */,
 				5450AFD21E63EA4300568494 /* yuv420p.fsh.c in Sources */,
@@ -1300,6 +1321,7 @@
 				5450B0021E63EA4300568494 /* ijkiomanager.c in Sources */,
 				5450B0031E63EA4300568494 /* ijkplayer.c in Sources */,
 				5450B0041E63EA4300568494 /* IJKFFOptions.m in Sources */,
+				A27DCE4A2AE8FA9500F07666 /* IJKBandwidthMeter.m in Sources */,
 				5450B0051E63EA4300568494 /* IJKSDLAudioUnitController.m in Sources */,
 				5450B0061E63EA4300568494 /* IJKFFMonitor.m in Sources */,
 				5450B0071E63EA4300568494 /* IJKFFMoviePlayerController.m in Sources */,
@@ -1338,6 +1360,7 @@
 				E654EAAC1B6B284C00B0F2D0 /* IJKFFMoviePlayerDef.m in Sources */,
 				E654EAB91B6B286700B0F2D0 /* ijkplayer_ios.m in Sources */,
 				E654EAB51B6B286400B0F2D0 /* ffpipeline_ios.c in Sources */,
+				A27DCE3B2AE8B00900F07666 /* IJKSlidingPercentile.m in Sources */,
 				54CF8A3A1E1526F800309DD5 /* ijkioprotocol.c in Sources */,
 				E654EABD1B6B287000B0F2D0 /* ijksdl_vout_dummy.c in Sources */,
 				E6C459CC1C70967F004831EC /* renderer_yuv420sp.c in Sources */,
@@ -1394,6 +1417,7 @@
 				E654EAB41B6B285900B0F2D0 /* ijkplayer.c in Sources */,
 				E654EAAE1B6B284C00B0F2D0 /* IJKFFOptions.m in Sources */,
 				E654EACE1B6B288A00B0F2D0 /* IJKSDLAudioUnitController.m in Sources */,
+				A27DCE492AE8FA9500F07666 /* IJKBandwidthMeter.m in Sources */,
 				E6DBD38A1C8941EB0058E4FB /* IJKFFMonitor.m in Sources */,
 				E654EAAB1B6B284C00B0F2D0 /* IJKFFMoviePlayerController.m in Sources */,
 				A24ABD9229358F3B00E2054D /* IJKContentKeyManager.m in Sources */,
@@ -1549,7 +1573,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1.3.0;
+				CURRENT_PROJECT_VERSION = 1.4.1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -1599,7 +1623,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1.3.0;
+				CURRENT_PROJECT_VERSION = 1.4.1;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;

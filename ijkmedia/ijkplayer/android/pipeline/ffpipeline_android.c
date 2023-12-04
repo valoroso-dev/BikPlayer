@@ -379,6 +379,45 @@ jobject ffpipeline_get_media_crypto_l(IJKFF_Pipeline* pipeline, int type)
     return pipeline->opaque->get_media_crypto_callback(pipeline->opaque->mediacodec_select_callback_opaque, type);
 }
 
+jobject ffpipeline_get_crypto_as_global_ref(IJKFF_Pipeline* pipeline, jobject crypto)
+{
+    JNIEnv *env = NULL;
+    jobject global_crypto = NULL;
+
+    ALOGD("%s\n", __func__);
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
+        ALOGE("amediacodec-pipeline:get global crypto: SetupThreadEnv failed\n");
+        return global_crypto;
+    }
+    if (!check_ffpipeline(pipeline, __func__)) {
+        ALOGE("amediacodec-pipeline:get global crypto: check ffpipeline failed\n");
+        return global_crypto;
+    }
+
+    if (crypto) {
+        global_crypto = (*env)->NewGlobalRef(env, crypto);
+    }
+    return global_crypto;
+}
+
+void ffpipeline_delete_crypto_global_ref(IJKFF_Pipeline* pipeline, jobject crypto)
+{
+    JNIEnv *env = NULL;
+
+    ALOGD("%s\n", __func__);
+    if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
+        ALOGE("amediacodec-pipeline:delete global crypto: SetupThreadEnv failed\n");
+        return;
+    }
+    if (!check_ffpipeline(pipeline, __func__)) {
+        ALOGE("amediacodec-pipeline:delete global crypto: check ffpipeline failed\n");
+        return;
+    }
+
+    ALOGI("%s crypto: %p\n", __func__, crypto);
+    SDL_JNI_DeleteGlobalRefP(env, &crypto);
+}
+
 void ffpipeline_set_get_drm_session_state_callback(IJKFF_Pipeline* pipeline, int (*callback)(void *opaque, int type, int flag))
 {
     ALOGD("%s\n", __func__);

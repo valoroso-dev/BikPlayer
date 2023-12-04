@@ -30,9 +30,12 @@ import android.text.TextUtils;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
+import androidx.annotation.RequiresApi;
+
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.Map;
 
 import tv.danmaku.ijk.media.player.misc.AndroidTrackInfo;
@@ -45,6 +48,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
     private final AndroidMediaPlayerListenerHolder mInternalListenerAdapter;
     private String mDataSource;
     private MediaDataSource mMediaDataSource;
+    private long mPrepareTime;
 
     private final Object mInitLock = new Object();
     private boolean mIsReleased;
@@ -163,6 +167,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void prepareAsync() throws IllegalStateException {
+        mPrepareTime = System.nanoTime();
         mInternalMediaPlayer.prepareAsync();
     }
 
@@ -189,6 +194,24 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
     @Override
     public ITrackInfo[] getTrackInfo() {
         return AndroidTrackInfo.fromMediaPlayer(mInternalMediaPlayer);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    @Override
+    public int getSelectedTrack(int trackType) {
+        return mInternalMediaPlayer.getSelectedTrack(trackType);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
+    @Override
+    public void selectTrack(int track) {
+        mInternalMediaPlayer.selectTrack(track);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
+    @Override
+    public void deselectTrack(int track) {
+        mInternalMediaPlayer.deselectTrack(track);
     }
 
     @Override
@@ -347,15 +370,6 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
         mInternalMediaPlayer.setOnTimedTextListener(mInternalListenerAdapter);
     }
 
-    @Override
-    public final void setTrack(int trackType, int trackId) {
-    }
-
-    @Override
-    public final int getCurrentTrack(int trackType) {
-        return -1;
-    }
-
     private class AndroidMediaPlayerListenerHolder implements
             MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener,
             MediaPlayer.OnBufferingUpdateListener,
@@ -364,6 +378,8 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
             MediaPlayer.OnErrorListener, MediaPlayer.OnInfoListener,
             MediaPlayer.OnTimedTextListener {
         public final WeakReference<AndroidMediaPlayer> mWeakMediaPlayer;
+        private final Map<String, Integer> mStartupInfo = new HashMap<>();
+        private boolean mHasNotifyStartupInfo = false;
 
         public AndroidMediaPlayerListenerHolder(AndroidMediaPlayer mp) {
             mWeakMediaPlayer = new WeakReference<AndroidMediaPlayer>(mp);
@@ -372,8 +388,15 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
         @Override
         public boolean onInfo(MediaPlayer mp, int what, int extra) {
             AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            return self != null && notifyOnInfo(what, extra, "");
-
+            if (self != null) {
+                if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START && !mHasNotifyStartupInfo) {
+                    mHasNotifyStartupInfo = true;
+                    mStartupInfo.put("video_render", (int) ((System.nanoTime() - mPrepareTime) / 1000000));
+                    notifyOnInfo(MEDIA_INFO_STARTUP_INFO, 0, mStartupInfo.toString());
+                }
+                return notifyOnInfo(what, extra, "");
+            }
+            return false;
         }
 
         @Override
@@ -390,6 +413,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
                 return;
 
             notifyOnVideoSizeChanged(width, height, 1, 1);
+            mStartupInfo.put("component_open", (int) ((System.nanoTime() - mPrepareTime) / 1000000));
         }
 
         @Override
@@ -426,6 +450,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
                 return;
 
             notifyOnPrepared();
+            mStartupInfo.put("find_streaminfo", (int) ((System.nanoTime() - mPrepareTime) / 1000000));
         }
 
         @Override

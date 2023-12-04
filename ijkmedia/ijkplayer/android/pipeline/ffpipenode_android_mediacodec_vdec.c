@@ -69,6 +69,7 @@ typedef struct IJKFF_Pipenode_Opaque {
     ijkmp_mediacodecinfo_context mcc;
 
     jobject                   jsurface;
+    jobject                   jcrypto;
     SDL_AMediaFormat         *input_aformat;
     SDL_AMediaCodec          *acodec;
     SDL_AMediaFormat         *output_aformat;
@@ -120,6 +121,13 @@ typedef struct IJKFF_Pipenode_Opaque {
 
     SDL_SpeedSampler          sampler;
     volatile bool             abort;
+    int                       error_code;
+
+    int                       reconfigure_state;
+#define RECONFIGURE_STATE_NONE         0
+#define RECONFIGURE_STATE_SIGNAL_EOS   1
+#define RECONFIGURE_STATE_WAIT_EOS     2
+#define RECONFIGURE_STATE_GOT_EOS      3
 } IJKFF_Pipenode_Opaque;
 
 static SDL_AMediaCodec *create_codec_l(JNIEnv *env, IJKFF_Pipenode *node)
@@ -300,8 +308,10 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
     prev_jsurface = opaque->jsurface;
     if (new_surface) {
         opaque->jsurface = (*env)->NewGlobalRef(env, new_surface);
-        if (J4A_ExceptionCheck__catchAll(env) || !opaque->jsurface)
+        if (J4A_ExceptionCheck__catchAll(env) || !opaque->jsurface) {
+            opaque->error_code = MEDIACODEC_ERROR_CODE_INVALID_SURFACE;
             goto fail;
+        }
     } else {
         opaque->jsurface = NULL;
     }
@@ -313,6 +323,7 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
         if (!opaque->acodec) {
             ALOGE("%s:open_video_decoder: create_codec failed\n", __func__);
             ret = -1;
+            opaque->error_code = MEDIACODEC_ERROR_CODE_CREATE_CODEC_FAILED;
             goto fail;
         }
     }
@@ -342,12 +353,18 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
 
     if (ffp->is_drm_source && opaque->jsurface) {
         crypto = ffpipeline_get_media_crypto_l(opaque->pipeline, 1);
+        if (opaque->jcrypto) {
+            ALOGI("%s:delete previous jcrypto %p\n", __func__, opaque->jcrypto);
+            SDL_JNI_DeleteGlobalRefP(env, &opaque->jcrypto);
+        }
+        opaque->jcrypto = crypto;
     }
-    opaque->acodec_has_configure_crypto = crypto ? true : false;
-    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, crypto, 0);
+    opaque->acodec_has_configure_crypto = opaque->jcrypto ? true : false;
+    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, opaque->jcrypto, 0);
     if (amc_ret != SDL_AMEDIA_OK) {
         ALOGE("%s:configure_surface: failed\n", __func__);
         ret = -1;
+        opaque->error_code = MEDIACODEC_ERROR_CODE_CONFIGURE_FAILED;
         goto fail;
     }
 
@@ -355,6 +372,7 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
     if (amc_ret != SDL_AMEDIA_OK) {
         ALOGE("%s:SDL_AMediaCodec_start: failed\n", __func__);
         ret = -1;
+        opaque->error_code = MEDIACODEC_ERROR_CODE_START_FAILED;
         goto fail;
     }
 
@@ -413,9 +431,14 @@ static int configure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surf
     }
     if (ffp->is_drm_source && opaque->jsurface) {
         crypto = ffpipeline_get_media_crypto_l(opaque->pipeline, 1);
+        if (opaque->jcrypto) {
+            ALOGI("%s:delete previous jcrypto %p\n", __func__, opaque->jcrypto);
+            SDL_JNI_DeleteGlobalRefP(env, &opaque->jcrypto);
+        }
+        opaque->jcrypto = crypto;
     }
-    opaque->acodec_has_configure_crypto = crypto ? true : false;
-    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, crypto, 0);
+    opaque->acodec_has_configure_crypto = opaque->jcrypto ? true : false;
+    amc_ret = SDL_AMediaCodec_configure_surface(env, opaque->acodec, opaque->input_aformat, opaque->jsurface, opaque->jcrypto, 0);
     if (amc_ret != SDL_AMEDIA_OK) {
         ALOGE("%s:configure_surface: failed\n", __func__);
         ret = -1;
@@ -496,6 +519,8 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
     uint32_t queue_flags            = 0;
     int      is_encrypted           = 0;
     int      is_drm_info_updated    = 0;
+    int      need_supply_sps_pps    = 0;
+    int      skip_clear_length      = 0;
 
     if (enqueue_count)
         *enqueue_count = 0;
@@ -541,8 +566,37 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
         av_packet_unref(&d->pkt);
         d->pkt_temp = d->pkt = pkt;
         d->packet_pending = 1;
+        need_supply_sps_pps = 0;
+        skip_clear_length = 0;
 
-        if (opaque->ffp->mediacodec_handle_resolution_change &&
+        if (ffp->is_abr_source && is->video_playing_stream != d->pkt_temp.stream_index) {
+            if (ffp_playing_stream_changed(ffp, d, d->pkt_temp.stream_index)) {
+                int check_reconfigure = 0;
+                ret = avcodec_parameters_from_context(opaque->codecpar, d->avctx);
+                if (ret < 0) {
+                    ALOGE("%s: can not copy parameters from context %d\n", __func__, ret);
+                    goto fail;
+                } else if (ffp->mediacodec_adaptive == 1) {
+                    if ((opaque->codecpar->codec_id == AV_CODEC_ID_H264 && opaque->codecpar->extradata[0] == 1) ||
+                        (opaque->codecpar->codec_id == AV_CODEC_ID_HEVC && opaque->codecpar->extradata_size > 3
+                            && (opaque->codecpar->extradata[0] == 1 || opaque->codecpar->extradata[1] == 1))) {
+                        need_supply_sps_pps = 1;
+                    } else if (opaque->codecpar->codec_id == AV_CODEC_ID_MPEG4) {
+                        check_reconfigure = 1;
+                    }
+                } else {
+                    check_reconfigure = 1;
+                }
+                if (check_reconfigure) {
+                    if (opaque->reconfigure_state == RECONFIGURE_STATE_NONE) {
+                        opaque->reconfigure_state = RECONFIGURE_STATE_SIGNAL_EOS;
+                    } else {
+                        ALOGE("%s: the mediacodec is reconfigure now", __func__);
+                    }
+                }
+            }
+            ALOGW("%s: adaptive need reconfigure codec: %d\n", __func__, opaque->reconfigure_state);
+        } else if (opaque->ffp->mediacodec_handle_resolution_change &&
             opaque->codecpar->codec_id == AV_CODEC_ID_H264) {
             uint8_t  *size_data      = NULL;
             int       size_data_size = 0;
@@ -607,7 +661,78 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
             } else {
                 time_stamp = 0;
             }
+            if (need_supply_sps_pps) {
+                AVPacket filtered_packet= { 0 };
+                size_t   sps_pps_size   = 0;
+                size_t   convert_size   = opaque->codecpar->extradata_size + 20;
+                uint8_t *convert_buffer = (uint8_t *)calloc(1, convert_size);
+                if (!convert_buffer) {
+                    ALOGE("%s:sps_pps_buffer: alloc failed\n", __func__);
+                    ret = -1;
+                    goto fail;
+                }
+                if (opaque->codecpar->codec_id == AV_CODEC_ID_H264) {
+                    if (0 != convert_sps_pps(opaque->codecpar->extradata, opaque->codecpar->extradata_size,
+                                            convert_buffer, convert_size,
+                                            &sps_pps_size, &opaque->nal_size)) {
+                        ALOGE("%s:convert_sps_pps: failed\n", __func__);
+                        free(convert_buffer);
+                        ret = -1;
+                        goto fail;
+                    }
+                } else {
+                    if (0 != convert_hevc_nal_units(opaque->codecpar->extradata, opaque->codecpar->extradata_size,
+                                                    convert_buffer, convert_size,
+                                                    &sps_pps_size, &opaque->nal_size)) {
+                        ALOGE("%s:convert_hevc_nal_units: failed\n", __func__);
+                        free(convert_buffer);
+                        ret = -1;
+                        goto fail;
+                    }
+                }
+
+                if (0 != supply_sps_pps(&d->pkt_temp, &filtered_packet, convert_buffer, sps_pps_size)) {
+                    ALOGE("%s:supply_sps_pps: failed\n", __func__);
+                    free(convert_buffer);
+                    ret = -1;
+                    goto fail;
+                } else {
+                    av_packet_unref(&d->pkt);
+                    d->pkt_temp = d->pkt = filtered_packet;
+                    skip_clear_length = sps_pps_size;
+                }
+
+                free(convert_buffer);
+                ALOGI("%s:supply_sps_pps: success\n", __func__);
+            }
         }
+    }
+
+    if (opaque->reconfigure_state == RECONFIGURE_STATE_SIGNAL_EOS) {
+        input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
+        if (input_buffer_index < 0) {
+            ret = 0;
+            goto fail;
+        }
+
+        amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, 0, 0, AMEDIACODEC__BUFFER_FLAG_END_OF_STREAM);
+        ALOGD("%s: reconfigure_mediacodec feed eos %d\n", __func__, amc_ret);
+        if (amc_ret != SDL_AMEDIA_OK) {
+            ret = -1;
+            goto fail;
+        } else {
+            opaque->reconfigure_state = RECONFIGURE_STATE_WAIT_EOS;
+            ret = 0;
+            goto fail;
+        }
+    } else if (opaque->reconfigure_state == RECONFIGURE_STATE_WAIT_EOS) {
+        ret = 0;
+        goto fail;
+    } else if (opaque->reconfigure_state == RECONFIGURE_STATE_GOT_EOS) {
+        opaque->reconfigure_state = RECONFIGURE_STATE_NONE;
+        opaque->aformat_need_recreate = true;
+        ffpipeline_set_surface_need_reconfigure_l(pipeline, true);
+        ALOGD("%s: reconfigure_mediacodec is finished\n", __func__);
     }
 
     if (ffp->is_drm_source) {
@@ -756,6 +881,7 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
             int       crypto_data_size = 0;
             crypto_data = av_packet_get_side_data(&d->pkt_temp, AV_PKT_DATA_DRM_KEY, &crypto_data_size);
             SDL_AMediaCodec_CryptoInfo_fill(crypto_data, crypto_data_size, &crypto_info, copy_size);
+            crypto_info->skipBlocks += skip_clear_length;
             amc_ret = SDL_AMediaCodec_queueSecureInputBuffer(opaque->acodec, input_buffer_index, 0, crypto_info, time_stamp, queue_flags);
         }
         if (amc_ret != SDL_AMEDIA_OK) {
@@ -808,6 +934,8 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
     uint32_t queue_flags        = 0;
     int      is_encrypted       = 0;
     int      is_drm_info_updated= 0;
+    int      need_supply_sps_pps= 0;
+    int      skip_clear_length  = 0;
 
     if (enqueue_count)
         *enqueue_count = 0;
@@ -856,8 +984,37 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
         av_packet_unref(&d->pkt);
         d->pkt_temp = d->pkt = pkt;
         d->packet_pending = 1;
+        need_supply_sps_pps = 0;
+        skip_clear_length = 0;
 
-        if (opaque->ffp->mediacodec_handle_resolution_change &&
+        if (ffp->is_abr_source && is->video_playing_stream != d->pkt_temp.stream_index) {
+            if (ffp_playing_stream_changed(ffp, d, d->pkt_temp.stream_index)) {
+                int check_reconfigure = 0;
+                ret = avcodec_parameters_from_context(opaque->codecpar, d->avctx);
+                if (ret < 0) {
+                    ALOGE("%s: can not copy parameters from context %d\n", __func__, ret);
+                    goto fail;
+                } else if (ffp->mediacodec_adaptive == 1) {
+                    if ((opaque->codecpar->codec_id == AV_CODEC_ID_H264 && opaque->codecpar->extradata[0] == 1) ||
+                        (opaque->codecpar->codec_id == AV_CODEC_ID_HEVC && opaque->codecpar->extradata_size > 3
+                            && (opaque->codecpar->extradata[0] == 1 || opaque->codecpar->extradata[1] == 1))) {
+                        need_supply_sps_pps = 1;
+                    } else if (opaque->codecpar->codec_id == AV_CODEC_ID_MPEG4) {
+                        check_reconfigure = 1;
+                    }
+                } else {
+                    check_reconfigure = 1;
+                }
+                if (check_reconfigure) {
+                    if (opaque->reconfigure_state == RECONFIGURE_STATE_NONE) {
+                        opaque->reconfigure_state = RECONFIGURE_STATE_SIGNAL_EOS;
+                    } else {
+                        ALOGE("%s: the mediacodec is reconfigure now", __func__);
+                    }
+                }
+            }
+            ALOGW("%s: adaptive need reconfigure codec: %d\n", __func__, opaque->reconfigure_state);
+        } else if (opaque->ffp->mediacodec_handle_resolution_change &&
             opaque->codecpar->codec_id == AV_CODEC_ID_H264) {
             uint8_t  *size_data      = NULL;
             int       size_data_size = 0;
@@ -958,6 +1115,50 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             } else {
                 time_stamp = 0;
             }
+            if (need_supply_sps_pps) {
+                AVPacket filtered_packet= { 0 };
+                size_t   sps_pps_size   = 0;
+                size_t   convert_size   = opaque->codecpar->extradata_size + 20;
+                uint8_t *convert_buffer = (uint8_t *)calloc(1, convert_size);
+                if (!convert_buffer) {
+                    ALOGE("%s:sps_pps_buffer: alloc failed\n", __func__);
+                    ret = -1;
+                    goto fail;
+                }
+                if (opaque->codecpar->codec_id == AV_CODEC_ID_H264) {
+                    if (0 != convert_sps_pps(opaque->codecpar->extradata, opaque->codecpar->extradata_size,
+                                            convert_buffer, convert_size,
+                                            &sps_pps_size, &opaque->nal_size)) {
+                        ALOGE("%s:convert_sps_pps: failed\n", __func__);
+                        free(convert_buffer);
+                        ret = -1;
+                        goto fail;
+                    }
+                } else {
+                    if (0 != convert_hevc_nal_units(opaque->codecpar->extradata, opaque->codecpar->extradata_size,
+                                                    convert_buffer, convert_size,
+                                                    &sps_pps_size, &opaque->nal_size)) {
+                        ALOGE("%s:convert_hevc_nal_units: failed\n", __func__);
+                        free(convert_buffer);
+                        ret = -1;
+                        goto fail;
+                    }
+                }
+
+                if (0 != supply_sps_pps(&d->pkt_temp, &filtered_packet, convert_buffer, sps_pps_size)) {
+                    ALOGE("%s:supply_sps_pps: failed\n", __func__);
+                    free(convert_buffer);
+                    ret = -1;
+                    goto fail;
+                } else {
+                    av_packet_unref(&d->pkt);
+                    d->pkt_temp = d->pkt = filtered_packet;
+                    skip_clear_length = sps_pps_size;
+                }
+
+                free(convert_buffer);
+                ALOGI("%s:supply_sps_pps: success\n", __func__);
+            }
         }
 #if 0
         AMCTRACE("input[%d][%d][%lld,%lld (%d, %d) -> %lld] %02x%02x%02x%02x%02x%02x%02x%02x", (int)d->pkt_temp.size,
@@ -977,6 +1178,33 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             d->pkt_temp.data[7]);
 #endif
 #endif
+    }
+
+    if (opaque->reconfigure_state == RECONFIGURE_STATE_SIGNAL_EOS) {
+        input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
+        if (input_buffer_index < 0) {
+            ret = 0;
+            goto fail;
+        }
+
+        amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, 0, 0, AMEDIACODEC__BUFFER_FLAG_END_OF_STREAM);
+        ALOGD("%s: reconfigure_mediacodec feed eos %d\n", __func__, amc_ret);
+        if (amc_ret != SDL_AMEDIA_OK) {
+            ret = -1;
+            goto fail;
+        } else {
+            opaque->reconfigure_state = RECONFIGURE_STATE_WAIT_EOS;
+            ret = 0;
+            goto fail;
+        }
+    } else if (opaque->reconfigure_state == RECONFIGURE_STATE_WAIT_EOS) {
+        ret = 0;
+        goto fail;
+    } else if (opaque->reconfigure_state == RECONFIGURE_STATE_GOT_EOS) {
+        opaque->reconfigure_state = RECONFIGURE_STATE_NONE;
+        opaque->aformat_need_recreate = true;
+        ffpipeline_set_surface_need_reconfigure_l(pipeline, true);
+        ALOGD("%s: reconfigure_mediacodec is finished\n", __func__);
     }
 
     if (ffp->is_drm_source) {
@@ -1142,6 +1370,7 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             int       crypto_data_size = 0;
             crypto_data = av_packet_get_side_data(&d->pkt_temp, AV_PKT_DATA_DRM_KEY, &crypto_data_size);
             SDL_AMediaCodec_CryptoInfo_fill(crypto_data, crypto_data_size, &crypto_info, copy_size);
+            crypto_info->skipBlocks += skip_clear_length;
             amc_ret = SDL_AMediaCodec_queueSecureInputBuffer(opaque->acodec, input_buffer_index, 0, crypto_info, time_stamp, queue_flags);
         }
         if (amc_ret != SDL_AMEDIA_OK) {
@@ -1306,11 +1535,19 @@ static int drain_output_buffer_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t time
         // continue;
     } else if (output_buffer_index == AMEDIACODEC__INFO_TRY_AGAIN_LATER) {
         AMCTRACE("AMEDIACODEC__INFO_TRY_AGAIN_LATER\n");
+        if (opaque->reconfigure_state == RECONFIGURE_STATE_WAIT_EOS) {
+            opaque->reconfigure_state = RECONFIGURE_STATE_GOT_EOS;
+            ALOGD("%s:reconfigure_mediacodec try again as eos\n", __func__);
+        }
         // continue;
     } else if (output_buffer_index < 0) {
         SDL_LockMutex(opaque->any_input_mutex);
         SDL_CondWaitTimeout(opaque->any_input_cond, opaque->any_input_mutex, 1000);
         SDL_UnlockMutex(opaque->any_input_mutex);
+        if (opaque->reconfigure_state == RECONFIGURE_STATE_WAIT_EOS) {
+            opaque->reconfigure_state = RECONFIGURE_STATE_GOT_EOS;
+            ALOGD("%s:reconfigure_mediacodec other as eos\n", __func__);
+        }
 
         goto done;
     } else if (output_buffer_index >= 0) {
@@ -1480,9 +1717,17 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
         return ACODEC_RETRY;
         // continue;
     } else if (output_buffer_index == AMEDIACODEC__INFO_TRY_AGAIN_LATER) {
+        if (opaque->reconfigure_state == RECONFIGURE_STATE_WAIT_EOS) {
+            opaque->reconfigure_state = RECONFIGURE_STATE_GOT_EOS;
+            ALOGD("%s:reconfigure_mediacodec try again as eos\n", __func__);
+        }
         return 0;
         // continue;
     } else if (output_buffer_index < 0) {
+        if (opaque->reconfigure_state == RECONFIGURE_STATE_WAIT_EOS) {
+            opaque->reconfigure_state = RECONFIGURE_STATE_GOT_EOS;
+            ALOGD("%s:reconfigure_mediacodec try again as eos\n", __func__);
+        }
         return 0;
     } else if (output_buffer_index >= 0) {
         ffp->stat.v_decode_frame_count++;
@@ -1606,6 +1851,10 @@ static void func_destroy(IJKFF_Pipenode *node)
     if (JNI_OK == SDL_JNI_SetupThreadEnv(&env)) {
         if (opaque->jsurface != NULL) {
             SDL_JNI_DeleteGlobalRefP(env, &opaque->jsurface);
+        }
+        if (opaque->jcrypto != NULL) {
+            ALOGI("func_destroy delete jcrypto %p\n", opaque->jcrypto);
+            SDL_JNI_DeleteGlobalRefP(env, &opaque->jcrypto);
         }
     }
 }
@@ -1768,10 +2017,10 @@ static int func_run_sync(IJKFF_Pipenode *node)
         got_frame = 0;
         ret = drain_output_buffer(env, node, timeUs, &dequeue_count, frame, &got_frame);
         if (!decode_frame_sucessed && ffp->find_stream_keyframe_ok == 1) {
-            ALOGE("Rapid decode_frame_sucessed----got_frame = %d\n",got_frame);
+            ALOGE("Rapid decode_frame_sucessed----got_frame = %d, max_try_time = %d\n", got_frame, ffp->mediacodec_retry_time);
             if (got_frame) {
                 decode_frame_sucessed = true;
-            } else if (decode_frame_error_count++ > 10 && !ffp->is_drm_source) {
+            } else if (decode_frame_error_count++ > ffp->mediacodec_retry_time && !ffp->is_drm_source) {
                 // DRM stream is hard to decode first frame after try 10 times.
                 ALOGE("Rapid decode_frame_error_count-----\n");
                 ret = -2;
@@ -2109,6 +2358,7 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_android_mediacodec(FFPlayer
     opaque->ffp         = ffp;
     opaque->decoder     = &is->viddec;
     opaque->weak_vout   = vout;
+    opaque->error_code  = 0;
 
     opaque->codecpar = avcodec_parameters_alloc();
     if (!opaque->codecpar)
@@ -2124,6 +2374,7 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_android_mediacodec(FFPlayer
             ALOGE("%s: MediaCodec: AVC/H264 is disabled. codec_id:%d \n", __func__, opaque->codecpar->codec_id);
             goto fail;
         }
+        opaque->error_code = MEDIACODEC_ERROR_CODE_RPOFILE_UNSUPPORTED;
         switch (opaque->codecpar->profile) {
             case FF_PROFILE_H264_BASELINE:
                 ALOGI("%s: MediaCodec: H264_BASELINE: enabled\n", __func__);
@@ -2168,6 +2419,7 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_android_mediacodec(FFPlayer
                 ALOGW("%s: Rapid MediaCodec: (%d) unknown profile: disabled\n", __func__, opaque->codecpar->profile);
                 goto fail;
         }
+        opaque->error_code = 0;
         strcpy(opaque->mcc.mime_type, SDL_AMIME_VIDEO_AVC);
         opaque->mcc.profile = opaque->codecpar->profile;
         opaque->mcc.level   = opaque->codecpar->level;
@@ -2229,11 +2481,13 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_android_mediacodec(FFPlayer
     ret = recreate_format_l(env, node);
     if (ret) {
         ALOGE("amc: recreate_format_l failed\n");
+        opaque->error_code = MEDIACODEC_ERROR_CODE_CREATE_FORMAT_FAILED;
         goto fail;
     }
 
     if (!ffpipeline_select_mediacodec_l(pipeline, &opaque->mcc) || !opaque->mcc.codec_name[0]) {
         ALOGE("amc: no suitable codec\n");
+        opaque->error_code = MEDIACODEC_ERROR_CODE_NO_SUITABLE_CODEC;
         goto fail;
     }
 
@@ -2266,6 +2520,9 @@ IJKFF_Pipenode *ffpipenode_create_video_decoder_from_android_mediacodec(FFPlayer
     ffp->stat.vdec_type = FFP_PROPV_DECODER_MEDIACODEC;
     return node;
 fail:
+    if (opaque->error_code) {
+        ffp_notify_msg2(ffp, FFP_MSG_ACCELERATED_CODEC_FAIL, opaque->error_code);
+    }
     ffpipenode_free_p(&node);
     return NULL;
 }

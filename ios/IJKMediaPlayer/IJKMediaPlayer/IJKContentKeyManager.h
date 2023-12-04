@@ -107,7 +107,7 @@ static char* getSessionStateName(int state)
     return "UNKNOWN";
 }
 
-@interface IJKContentKeyManager : NSObject<AVContentKeySessionDelegate, AVContentKeyRecipient>
+@interface IJKContentKeyManager : NSObject<AVContentKeySessionDelegate>
 
 - (id)setFairPlayCertificate:(NSString*)fpsCertificateUrl
                 licensingUrl:(NSString*)fpsLicensingServiceUrl

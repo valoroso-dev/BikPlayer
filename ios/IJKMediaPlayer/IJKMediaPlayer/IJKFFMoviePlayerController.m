@@ -34,7 +34,7 @@
 #import "ijkioapplication.h"
 #include "string.h"
 
-static const char *kIJKFFRequiredFFmpegVersion = "ff4.0.6--20230822--001";
+static const char *kIJKFFRequiredFFmpegVersion = "ff4.0.6--20231129--001";
 
 // It means you didn't call shutdown if you found this object leaked.
 @interface IJKWeakHolder : NSObject
@@ -256,6 +256,7 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         [self setScreenOn:YES];
 
         _notificationManager = [[IJKNotificationManager alloc] init];
+        _segmentDict = [[NSMutableDictionary alloc] init];
         [self registerApplicationObservers];
     }
     return self;
@@ -360,6 +361,7 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         [self setScreenOn:YES];
 
         _notificationManager = [[IJKNotificationManager alloc] init];
+        _segmentDict = [[NSMutableDictionary alloc] init];
         [self registerApplicationObservers];
     }
     return self;
@@ -520,6 +522,12 @@ inline static int getPlayerOption(IJKFFOptionCategory category)
     ijkmp_global_set_log_level(logLevel);
 }
 
++ (void)setDumpRoot:(NSString *)path
+{
+    NSLog(@"IJKMEDIA: setDumpRoot path=%@\n", path);
+    ijkmp_global_set_dump_root([path UTF8String]);
+}
+
 + (NSString *)playerVersion {
     const char *actualVersion = ijkmp_version();
     return [NSString stringWithUTF8String:actualVersion];
@@ -634,7 +642,12 @@ inline static int getPlayerOption(IJKFFOptionCategory category)
         case MP_STATE_PAUSED:
             mpState = IJKMPMoviePlaybackStatePaused;
             break;
-        case MP_STATE_PREPARED:
+        case MP_STATE_PREPARED: {
+            int64_t adaptivePlayback = [self getPropertyInt64:FFP_PROP_INT64_ADAPTIVE_PLAYBACK defaultValue:0];
+            if (adaptivePlayback != 0 && !self.bandwidthMeter) {
+                [self setBandwidthMeter:[[IJKDefaultBandwidthMeter alloc] init]];
+            }
+        }
         case MP_STATE_STARTED: {
             if (_seeking)
                 mpState = IJKMPMoviePlaybackStateSeekingForward;
@@ -885,6 +898,9 @@ inline static NSString *formatedSpeed(int64_t bytes, int64_t elapsed_milli) {
     int64_t tcpSpeed = ijkmp_get_property_int64(_mediaPlayer, FFP_PROP_INT64_TCP_SPEED, 0);
     [self setHudValue:[NSString stringWithFormat:@"%@", formatedSpeed(tcpSpeed, 1000)]
                   forKey:@"tcp-spd"];
+    int64_t bandwidth = ijkmp_get_property_int64(_mediaPlayer, FFP_PROP_INT64_CURRENT_BANDWIDTH, 0);
+    [self setHudValue:[NSString stringWithFormat:@"%@", formatedSpeed(bandwidth, 1000)]
+                  forKey:@"bw"];
 
     [self setHudValue:formatedDurationMilli(_monitor.prepareDuration) forKey:@"t-prepared"];
     [self setHudValue:formatedDurationMilli(_monitor.firstVideoFrameLatency) forKey:@"t-render"];
@@ -1157,7 +1173,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             break;
         }
         case FFP_MSG_COMPLETED: {
-
+            NSLog(@"FFP_MSG_COMPLETED\n");
             [self setScreenOn:NO];
 
             [[NSNotificationCenter defaultCenter]
@@ -1187,7 +1203,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             [self changeNaturalSize];
             break;
         case FFP_MSG_BUFFERING_START: {
-            NSLog(@"FFP_MSG_BUFFERING_START:\n");
+            NSLog(@"FFP_MSG_BUFFERING_START: %d, %d\n", avmsg->arg1, avmsg->arg2);
 
             _monitor.lastPrerollStartTick = (int64_t)SDL_GetTickHR();
 
@@ -1201,7 +1217,7 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             break;
         }
         case FFP_MSG_BUFFERING_END: {
-            NSLog(@"FFP_MSG_BUFFERING_END:\n");
+            NSLog(@"FFP_MSG_BUFFERING_END: %d, %d\n", avmsg->arg1, avmsg->arg2);
 
             _monitor.lastPrerollDuration = (int64_t)SDL_GetTickHR() - _monitor.lastPrerollStartTick;
 
@@ -1285,6 +1301,34 @@ inline static void fillMetaInternal(NSMutableDictionary *meta, IjkMediaMeta *raw
             NSLog(@"FFP_MSG_OPEN_INPUT:\n");
             [[NSNotificationCenter defaultCenter]
              postNotificationName:IJKMPMoviePlayerOpenInputNotification
+             object:self];
+            break;
+        }
+        case FFP_MSG_READ_FIRST_VIDEO_FRAME: {
+            NSLog(@"FFP_MSG_READ_FIRST_VIDEO_FRAME: %d\n", avmsg->arg1);
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:IJKMPMoviePlayerReadFirstVideoFrameNotification
+             object:self];
+            break;
+        }
+        case FFP_MSG_READ_FIRST_AUDIO_FRAME: {
+            NSLog(@"FFP_MSG_READ_FIRST_AUDIO_FRAME: %d\n", avmsg->arg1);
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:IJKMPMoviePlayerReadFirstAudioFrameNotification
+             object:self];
+            break;
+        }
+        case FFP_MSG_STREAM_INFO_CHANGED: {
+            NSLog(@"FFP_MSG_STREAM_INFO_CHANGED:\n");
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:IJKMPMoviePlayerStreamInfoChangedNotification
+             object:self];
+            break;
+        }
+        case FFP_MSG_READ_STREAM_CHANGED: {
+            NSLog(@"FFP_MSG_READ_STREAM_CHANGED: %d\n", avmsg->arg1);
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:IJKMPMoviePlayerReadStreamChangedNotification
              object:self];
             break;
         }
@@ -1519,6 +1563,10 @@ static int onInjectOnHttpEvent(IJKFFMoviePlayerController *mpc, int type, void *
                 dict[IJKMediaEventAttrKey_url]          = [NSString ijk_stringBeEmptyIfNil:monitor.httpUrl];
                 [delegate invoke:type attributes:dict];
             }
+            if (mpc.bandwidthMeter) {
+                NSTimeInterval current = [[NSDate date]timeIntervalSince1970] * 1000;
+                [mpc.segmentDict setValue:[NSNumber numberWithDouble:current] forKey:url];
+            }
             break;
         case AVAPP_EVENT_DID_HTTP_OPEN:
             elapsed = calculateElapsed(monitor.httpOpenTick, SDL_GetTickHR());
@@ -1568,6 +1616,25 @@ static int onInjectOnHttpEvent(IJKFFMoviePlayerController *mpc, int type, void *
                 [delegate invoke:type attributes:dict];
             }
             break;
+        case AVAPP_EVENT_DID_HTTP_READ_END:
+            url   = [NSString stringWithUTF8String:realData->url];
+            if (mpc.bandwidthMeter) {
+                NSNumber *startTime = [mpc.segmentDict objectForKey:url];
+                if (!startTime) {
+                    NSLog(@"EVENT_DID_HTTP_READ_END could not find segment : %@", url);
+                    break;
+                }
+                NSTimeInterval current = [[NSDate date]timeIntervalSince1970] * 1000;
+                long long sampleElapsedTimeMs = current - [startTime longLongValue];
+                long long fileSize = @(realData->filesize).longLongValue;
+                [mpc.bandwidthMeter addSample:fileSize sampleElapsedTimeMs:sampleElapsedTimeMs];
+                long long newBandwidth = [mpc.bandwidthMeter getBitrateEstimate];
+                if (mpc.currentBandwidth != newBandwidth) {
+                    mpc.currentBandwidth = newBandwidth;
+                    [mpc setBandwidth:newBandwidth];
+                }
+            }
+            break;
     }
 
     return 0;
@@ -1600,6 +1667,7 @@ static int ijkff_inject_callback(void *opaque, int message, void *data, size_t d
         case AVAPP_EVENT_DID_HTTP_OPEN:
         case AVAPP_EVENT_WILL_HTTP_SEEK:
         case AVAPP_EVENT_DID_HTTP_SEEK:
+        case AVAPP_EVENT_DID_HTTP_READ_END:
             return onInjectOnHttpEvent(mpc, message, data, data_size);
         default: {
             return 0;
@@ -1709,6 +1777,10 @@ static int ijkff_inject_callback(void *opaque, int message, void *data, size_t d
 - (void)setMaxBufferSize:(int)maxBufferSize
 {
     [self setPlayerOptionIntValue:maxBufferSize forKey:@"max-buffer-size"];
+}
+
+- (void)setBandwidth:(int64_t)bandwidth {
+    ijkmp_set_property_int64(_mediaPlayer, FFP_PROP_INT64_CURRENT_BANDWIDTH, bandwidth);
 }
 
 #pragma mark app state changed

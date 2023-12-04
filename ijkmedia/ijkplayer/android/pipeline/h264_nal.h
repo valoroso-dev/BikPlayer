@@ -149,3 +149,24 @@ static void convert_h264_to_annexb( uint8_t *p_buf, size_t i_len,
     }
 }
 #endif
+
+static int supply_sps_pps(AVPacket *in, AVPacket *out,
+                          const uint8_t *sps_pps, uint32_t sps_pps_size)
+{
+    uint32_t offset = out->size;
+    int err;
+
+    err = av_grow_packet(out, sps_pps_size + in->size);
+    if (err < 0)
+        return err;
+
+    if (sps_pps)
+        memcpy(out->data + offset, sps_pps, sps_pps_size);
+    memcpy(out->data + sps_pps_size + offset, in->data, in->size);
+
+    err = av_packet_copy_props(out, in);
+    if (err < 0)
+        return err;
+
+    return 0;
+}

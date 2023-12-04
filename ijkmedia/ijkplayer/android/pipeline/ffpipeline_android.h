@@ -54,6 +54,8 @@ void    ffpipeline_set_volume(IJKFF_Pipeline* pipeline, float left, float right)
 
 void    ffpipeline_set_get_media_crypto_callback(IJKFF_Pipeline* pipeline, jobject (*callback)(void *opaque, int type));
 jobject ffpipeline_get_media_crypto_l(IJKFF_Pipeline* pipeline, int type);
+jobject ffpipeline_get_crypto_as_global_ref(IJKFF_Pipeline* pipeline, jobject crypto);
+void    ffpipeline_delete_crypto_global_ref(IJKFF_Pipeline* pipeline, jobject crypto);
 
 void    ffpipeline_set_get_drm_session_state_callback(IJKFF_Pipeline* pipeline, int (*callback)(void *opaque, int type, int flag));
 int     ffpipeline_get_drm_session_state_l(IJKFF_Pipeline* pipeline, int type, int flag);

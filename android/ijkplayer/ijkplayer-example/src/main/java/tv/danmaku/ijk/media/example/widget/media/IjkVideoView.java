@@ -71,6 +71,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     private Map<String, String> mHeaders;
     private String mLicenseUrl;
     private String mLicenseToken;
+    private boolean mAdaptive;
 
     // all possible internal states
     private static final int STATE_ERROR = -1;
@@ -271,6 +272,10 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         mLicenseToken = licenseToken;
     }
 
+    public void setAdaptive(boolean adaptive) {
+        mAdaptive = adaptive;
+    }
+
     /**
      * Sets video URI.
      *
@@ -333,6 +338,12 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
             mMediaPlayer = createPlayer(playertype == 0 ?mSettings.getPlayer() : playertype);
             if (!TextUtils.isEmpty(mLicenseUrl)) {
                 mMediaPlayer.setDrmInfo(IMediaPlayer.DRM_TYPE_WIDEVINE, true, mLicenseUrl, null, "POST");
+            }
+            if (mAdaptive) {
+                if (mMediaPlayer instanceof IjkMediaPlayer) {
+                    ((IjkMediaPlayer) mMediaPlayer).setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "is-abr-source", 1);
+                    ((IjkMediaPlayer) mMediaPlayer).setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "first_variant_only", 1);
+                }
             }
 
             // TODO: create SubtitleController in MediaPlayer, but we need

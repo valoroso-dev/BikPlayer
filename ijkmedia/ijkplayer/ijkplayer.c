@@ -86,6 +86,11 @@ void ijkmp_global_set_log_level(int log_level)
     ffp_global_set_log_level(log_level);
 }
 
+void ijkmp_global_set_dump_root(const char *root_path)
+{
+    ffp_global_set_dump_root(root_path);
+}
+
 void ijkmp_global_set_inject_callback(ijk_inject_callback cb)
 {
     ffp_global_set_inject_callback(cb);

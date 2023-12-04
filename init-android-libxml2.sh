@@ -16,9 +16,11 @@
 # limitations under the License.
 #
 
-IJK_XML2_UPSTREAM=https://github.com/valoroso-dev/libxml2.git
-IJK_XML2_FORK=https://github.com/valoroso-dev/libxml2.git
-IJK_XML2_COMMIT=v2.9.12
+source ./init-repo-url.sh
+
+IJK_XML2_UPSTREAM=$BIK_PLAYER_XML2_UPSTREAM
+IJK_XML2_FORK=$BIK_PLAYER_XML2_FORK
+IJK_XML2_COMMIT=$BIK_PLAYER_XML2_COMMIT
 IJK_XML2_LOCAL_REPO=extra/libxml2
 
 set -e

@@ -42,6 +42,10 @@ NSString *const IJKMPMoviePlayerFirstAudioFrameRenderedNotification = @"IJKMPMov
 NSString *const IJKMPMoviePlayerFirstAudioFrameDecodedNotification  = @"IJKMPMoviePlayerFirstAudioFrameDecodedNotification";
 NSString *const IJKMPMoviePlayerFirstVideoFrameDecodedNotification  = @"IJKMPMoviePlayerFirstVideoFrameDecodedNotification";
 NSString *const IJKMPMoviePlayerOpenInputNotification               = @"IJKMPMoviePlayerOpenInputNotification";
+NSString *const IJKMPMoviePlayerReadFirstVideoFrameNotification     = @"IJKMPMoviePlayerReadFirstVideoFrameNotification";
+NSString *const IJKMPMoviePlayerReadFirstAudioFrameNotification     = @"IJKMPMoviePlayerReadFirstAudioFrameNotification";
+NSString *const IJKMPMoviePlayerStreamInfoChangedNotification       = @"IJKMPMoviePlayerStreamInfoChangedNotification";
+NSString *const IJKMPMoviePlayerReadStreamChangedNotification       = @"IJKMPMoviePlayerReadStreamChangedNotification";
 NSString *const IJKMPMoviePlayerFindStreamInfoNotification          = @"IJKMPMoviePlayerFindStreamInfoNotification";
 NSString *const IJKMPMoviePlayerComponentOpenNotification           = @"IJKMPMoviePlayerComponentOpenNotification";
 

@@ -88,6 +88,11 @@ public class MediaPlayerProxy implements IMediaPlayer {
     }
 
     @Override
+    public void updateDrmInitInfo(String stringObj) {
+        mBackEndMediaPlayer.updateDrmInitInfo(stringObj);
+    }
+
+    @Override
     public String getDataSource() {
         return mBackEndMediaPlayer.getDataSource();
     }
@@ -303,6 +308,21 @@ public class MediaPlayerProxy implements IMediaPlayer {
     }
 
     @Override
+    public void setOnDrmInitInfoListener(OnDrmInitInfoListener listener) {
+        if (listener != null) {
+            final OnDrmInitInfoListener finalListener = listener;
+            mBackEndMediaPlayer.setOnDrmInitInfoListener(new OnDrmInitInfoListener() {
+                @Override
+                public void onDrmInitInfo(IMediaPlayer mp, String drmInitInfo) {
+                    finalListener.onDrmInitInfo(MediaPlayerProxy.this, drmInitInfo);
+                }
+            });
+        } else {
+            mBackEndMediaPlayer.setOnDrmInitInfoListener(null);
+        }
+    }
+
+    @Override
     public void setAudioStreamType(int streamtype) {
         mBackEndMediaPlayer.setAudioStreamType(streamtype);
     }
@@ -333,6 +353,21 @@ public class MediaPlayerProxy implements IMediaPlayer {
     }
 
     @Override
+    public int getSelectedTrack(int trackType) {
+        return mBackEndMediaPlayer.getSelectedTrack(trackType);
+    }
+
+    @Override
+    public void selectTrack(int track) {
+        mBackEndMediaPlayer.selectTrack(track);
+    }
+
+    @Override
+    public void deselectTrack(int track) {
+        mBackEndMediaPlayer.deselectTrack(track);
+    }
+
+    @Override
     public void setLooping(boolean looping) {
         mBackEndMediaPlayer.setLooping(looping);
     }
@@ -343,16 +378,12 @@ public class MediaPlayerProxy implements IMediaPlayer {
     }
 
     @Override
-    public final void setTrack(int trackType, int trackId) {
-    }
-
-    @Override
-    public final int getCurrentTrack(int trackType) {
-        return -1;
-    }
-
-    @Override
     public void setDrmInfo(int drmType, boolean multiSession, String licenceServerUrl, Map<String, String> headers, String reqMethod) {
+
+    }
+
+    @Override
+    public void setDrmInfo(int drmType, boolean multiSession, String licenceServerUrl, Map<String, String> headers, String reqMethod, byte[] offlineLicenseKeySetId) {
 
     }
 }

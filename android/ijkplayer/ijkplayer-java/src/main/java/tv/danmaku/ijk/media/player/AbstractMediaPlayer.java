@@ -32,6 +32,7 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
     private OnErrorListener mOnErrorListener;
     private OnInfoListener mOnInfoListener;
     private OnTimedTextListener mOnTimedTextListener;
+    private OnDrmInitInfoListener mOnDrmInitInfoListener;
 
     private int mDrmType = IMediaPlayer.DRM_TYPE_NULL;
     private boolean mDrmMultiSession = false;
@@ -40,6 +41,7 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
     private String mDrmLicenseServerUrl;
     private Map<String, String> mDrmReqHeaders;
     private String mDrmReqMethod;
+    private byte[] mOfflineLicenseKeySetId;
 
     public static final UUID COMMON_PSSH_UUID = new UUID(0x1077EFECC0B24D02L, 0xACE33C1E52E2FB4BL);
     public static final UUID CLEARKEY_UUID = new UUID(0xE2719D58A985B3C9L, 0x781AB030AF78D30EL);
@@ -89,12 +91,22 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
         mOnTimedTextListener = listener;
     }
 
+    public final void setOnDrmInitInfoListener(OnDrmInitInfoListener listener) {
+        mOnDrmInitInfoListener = listener;
+    }
+
     public void setDrmInfo(int drmType, boolean multiSession, String licenseServerUrl, Map<String, String> headers, String reqMethod) {
+        setDrmInfo(drmType, multiSession, licenseServerUrl, headers, reqMethod, null);
+    }
+
+    @Override
+    public void setDrmInfo(int drmType, boolean multiSession, String licenseServerUrl, Map<String, String> headers, String reqMethod, byte[] offlineLicenseKeySetId) {
         mDrmType = drmType;
         mDrmMultiSession = multiSession;
         mDrmLicenseServerUrl = licenseServerUrl;
         mDrmReqHeaders = headers;
         mDrmReqMethod = reqMethod;
+        mOfflineLicenseKeySetId = offlineLicenseKeySetId;
     }
 
     public final int getDrmType() {
@@ -121,6 +133,10 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
         return mDrmReqMethod;
     }
 
+    public byte[] getOfflineLicenseKeySetId() {
+        return mOfflineLicenseKeySetId;
+    }
+
     /*public final String getMimeType() {
         return mStreamType == IMediaPlayer.STREAM_DASH ? "/dash-xml" : "/x-mpegURL";
     }*/
@@ -142,6 +158,7 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
         mOnErrorListener = null;
         mOnInfoListener = null;
         mOnTimedTextListener = null;
+        mOnDrmInitInfoListener = null;
     }
 
     protected final void notifyOnPrepared() {
@@ -184,6 +201,11 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
             mOnTimedTextListener.onTimedText(this, text);
     }
 
+    protected final void notifyOnDrmInitInfo(String drmInitInfo) {
+        if (mOnDrmInitInfoListener != null)
+            mOnDrmInitInfoListener.onDrmInitInfo(this, drmInitInfo);
+    }
+
     public void setDataSource(IMediaDataSource mediaDataSource) {
         throw new UnsupportedOperationException();
     }
@@ -191,5 +213,9 @@ public abstract class AbstractMediaPlayer implements IMediaPlayer {
     @Override
     public String getVideoCodecName() {
         return "unknown";
+    }
+
+    @Override
+    public void updateDrmInitInfo(String stringObj) {
     }
 }

@@ -764,12 +764,67 @@ static inline void DuplicatePkt(Ijk_VideoToolBox_Opaque* context, const AVPacket
 
 static int decode_video(Ijk_VideoToolBox_Opaque* context, AVCodecContext *avctx, AVPacket *avpkt, int* got_picture_ptr)
 {
+    FFPlayer *ffp           = context->ffp;
+    VideoState *is          = ffp->is;
+    Decoder *d              = &is->viddec;
     int      ret            = 0;
     uint8_t *size_data      = NULL;
     int      size_data_size = 0;
+    int    need_reconfigure = 0;
 
     if (!avpkt || !avpkt->data) {
         return 0;
+    }
+
+    if (ffp->is_abr_source && is->video_playing_stream != avpkt->stream_index) {
+        if (ffp_playing_stream_changed(ffp, d, avpkt->stream_index)) {
+            ret = avcodec_parameters_from_context(context->codecpar, d->avctx);
+            if (ret < 0) {
+                ALOGE("%s: can not copy parameters from context %d\n", __func__, ret);
+            }
+            need_reconfigure = 1;
+        }
+        ALOGW("%s: adaptive need reconfigure codec: %d\n", __func__, need_reconfigure);
+        if (need_reconfigure) {
+            int             got_picture = 0;
+            AVFrame        *frame      = av_frame_alloc();
+            AVDictionary   *codec_opts = NULL;
+            AVCodec        *codec      = NULL;
+            AVCodecContext *new_avctx  = NULL;
+
+            new_avctx = avcodec_alloc_context3(NULL);
+            if (!new_avctx)
+                return AVERROR(ENOMEM);
+
+            ret = avcodec_parameters_to_context(new_avctx, context->codecpar);
+            if (ret < 0)
+                return ret;
+
+            codec = avcodec_find_decoder(new_avctx->codec_id);
+            if (!codec) {
+                ret = AVERROR(EINVAL);
+                return ret;
+            }
+
+            av_dict_set(&codec_opts, "threads", "1", 0);
+            ret = avcodec_open2(new_avctx, avctx->codec, &codec_opts);
+            av_dict_free(&codec_opts);
+            if (ret < 0) {
+                avcodec_free_context(&new_avctx);
+                return ret;
+            }
+
+            ret = avcodec_decode_video2(new_avctx, frame, &got_picture, avpkt);
+            if (ret < 0) {
+                avcodec_free_context(&new_avctx);
+                return ret;
+            } else {
+                context->refresh_request = true;
+            }
+
+            av_frame_unref(frame);
+            avcodec_free_context(&new_avctx);
+        }
     }
 
     if (context->ffp->vtb_handle_resolution_change &&

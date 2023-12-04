@@ -16,9 +16,11 @@
 # limitations under the License.
 #
 
-IJK_OPENSSL_UPSTREAM=https://github.com/valoroso-dev/openssl.git
-IJK_OPENSSL_FORK=https://github.com/valoroso-dev/openssl.git
-IJK_OPENSSL_COMMIT=OpenSSL_1_0_2q
+source ./init-repo-url.sh
+
+IJK_OPENSSL_UPSTREAM=$BIK_PLAYER_OPENSSL_UPSTREAM
+IJK_OPENSSL_FORK=$BIK_PLAYER_OPENSSL_FORK
+IJK_OPENSSL_COMMIT=$BIK_PLAYER_OPENSSL_COMMIT
 IJK_OPENSSL_LOCAL_REPO=extra/openssl
 
 set -e

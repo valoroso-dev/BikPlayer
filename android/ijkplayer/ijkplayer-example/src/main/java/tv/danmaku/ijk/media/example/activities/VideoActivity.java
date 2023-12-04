@@ -39,6 +39,8 @@ import android.view.ViewGroup;
 import android.widget.TableLayout;
 import android.widget.TextView;
 
+import java.util.Map;
+
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.example.R;
@@ -56,6 +58,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     private Uri    mVideoUri;
     private String mLicenseUrl;
     private String mLicenseToken;
+    private boolean mAdaptive;
 
     private AndroidMediaController mMediaController;
     private IjkVideoView mVideoView;
@@ -67,25 +70,34 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     private Settings mSettings;
     private boolean mBackPressed;
 
-    public static Intent newIntent(Context context, String videoPath, String videoTitle, String licenseUrl, String licenseToken) {
+    public static Intent newIntent(Context context, String videoPath, String videoTitle, Map<String, Object> map) {
         Intent intent = new Intent(context, VideoActivity.class);
         intent.putExtra("videoPath", videoPath);
         intent.putExtra("videoTitle", videoTitle);
-        if (!TextUtils.isEmpty(licenseUrl)) {
-            intent.putExtra("licenseUrl", licenseUrl);
-        }
-        if (!TextUtils.isEmpty(licenseToken)) {
-            intent.putExtra("licenseToken", licenseToken);
+        if (map != null) {
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                if (value instanceof String) {
+                    intent.putExtra(key, (String) value);
+                } else if (value instanceof Integer) {
+                    intent.putExtra(key, (int) value);
+                } else if (value instanceof Boolean) {
+                    intent.putExtra(key, (boolean) value);
+                } else {
+                    throw new IllegalArgumentException("invalid value " + value + " for key " + key);
+                }
+            }
         }
         return intent;
     }
 
     public static void intentTo(Context context, String videoPath, String videoTitle) {
-        context.startActivity(newIntent(context, videoPath, videoTitle, null, null));
+        context.startActivity(newIntent(context, videoPath, videoTitle, null));
     }
 
-    public static void intentTo(Context context, String videoPath, String licenseUrl, String licenseToken, String videoTitle) {
-        context.startActivity(newIntent(context, videoPath, videoTitle, licenseUrl, licenseToken));
+    public static void intentTo(Context context, String videoPath, String videoTitle, Map<String, Object> map) {
+        context.startActivity(newIntent(context, videoPath, videoTitle, map));
     }
 
     @Override
@@ -99,6 +111,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         mVideoPath = getIntent().getStringExtra("videoPath");
         mLicenseUrl = getIntent().getStringExtra("licenseUrl");
         mLicenseToken = getIntent().getStringExtra("licenseToken");
+        mAdaptive = getIntent().getBooleanExtra("adaptive", false);
 
         Intent intent = getIntent();
         String intentAction = intent.getAction();
@@ -170,6 +183,7 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
         if (!TextUtils.isEmpty(mLicenseUrl)) {
             mVideoView.setDrmInfo(mLicenseUrl, mLicenseToken);
         }
+        mVideoView.setAdaptive(mAdaptive);
         mVideoView.start();
     }
 

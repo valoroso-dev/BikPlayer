@@ -18,6 +18,11 @@ gradle.startParameter.taskNames.each { task ->
     def taskName = task.split(":").last()
     switch (taskName) {
         case "uploadArchives":
+            File privateFile = new File(rootProject.projectDir, 'tools/gradle-private-upload.gradle')
+            if (privateFile.exists()) {
+                apply from: privateFile
+                break
+            }
             apply from: new File(rootProject.projectDir, 'tools/gradle-mvn-push.gradle')
             break;
         case "bintrayUpload":

@@ -90,6 +90,7 @@ static const float kMaxHighWaterMarkMilli   = 15 * 1000;
 static NSString *kErrorDomain = @"IJKAVMoviePlayer";
 static const NSInteger kEC_CurrentPlayerItemIsNil   = 5001;
 static const NSInteger kEC_PlayerItemCancelled      = 5002;
+static const NSInteger kEC_PlayerItemFailed         = 5003;
 
 static void *KVO_AVPlayer_rate          = &KVO_AVPlayer_rate;
 static void *KVO_AVPlayer_currentItem   = &KVO_AVPlayer_currentItem;
@@ -500,6 +501,9 @@ static IJKAVMoviePlayerController* instance;
         AVKeyValueStatus keyStatus = [asset statusOfValueForKey:thisKey error:&error];
         if (keyStatus == AVKeyValueStatusFailed)
         {
+            error = [self createErrorWithCode:kEC_PlayerItemFailed
+                                  description:@"player item failed"
+                                       reason:nil];
             [self assetFailedToPrepareForPlayback:error];
             return;
         } else if (keyStatus == AVKeyValueStatusCancelled) {
@@ -691,7 +695,9 @@ static IJKAVMoviePlayerController* instance;
         [self setScreenOn:NO];
  
         if (blockError == nil) {
-            blockError = [[NSError alloc] init];
+            blockError = [NSError errorWithDomain:@"UnknownAVMoviePlayer"
+                                             code:0
+                                         userInfo:nil];
         }
         
         [[NSNotificationCenter defaultCenter]
@@ -709,6 +715,7 @@ static IJKAVMoviePlayerController* instance;
     if (_isShutdown)
         return;
     
+    NSLog(@"AVPlayer: assetFailedToPrepareForPlayback:%@\n", error);
     [self onError:error];
 }
 
@@ -717,7 +724,8 @@ static IJKAVMoviePlayerController* instance;
     if (_isShutdown)
         return;
     
-    [self onError:[notification.userInfo objectForKey:@"error"]];
+    NSLog(@"AVPlayer: playerItemFailedToPlayToEndTime:%@\n", notification);
+    [self onError:[notification.userInfo objectForKey:AVPlayerItemFailedToPlayToEndTimeErrorKey]];
 }
 
 - (void)playerItemDidReachEnd:(NSNotification *)notification

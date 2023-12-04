@@ -44,6 +44,9 @@
 #define FFP_MSG_READ_FIRST_VIDEO_FRAME      412     /* find_stream_info */
 #define FFP_MSG_READ_FIRST_AUDIO_FRAME      413     /* find_stream_info */
 #define FFP_MSG_DRM_KEY_LOADED              414     /* vcodec drm key loaded */
+#define FFP_MSG_ACCELERATED_CODEC_FAIL      415     /* accelerated codec fail */
+#define FFP_MSG_STREAM_INFO_CHANGED         416     /* stream info changed */
+#define FFP_MSG_READ_STREAM_CHANGED         417     /* the current read stream changed */
 
 #define FFP_MSG_BUFFERING_START             500
 #define FFP_MSG_BUFFERING_END               501
@@ -110,6 +113,9 @@
 #define FFP_PROP_INT64_LOGICAL_FILE_SIZE                20209
 #define FFP_PROP_INT64_SHARE_CACHE_DATA                 20210
 #define FFP_PROP_INT64_IMMEDIATE_RECONNECT              20211
+#define FFP_PROP_INT64_CURRENT_BANDWIDTH                20212
+#define FFP_PROP_INT64_ADAPTIVE_PLAYBACK                20213
+#define FFP_PROP_INT64_ADAPTIVE_MEDIACODEC              20214
 
 #define FFP_BUFFERING_REASION_NO_DATA                   1
 #define FFP_BUFFERING_REASION_SEEK_START                2
@@ -130,5 +136,6 @@
 #define FFP_ERROR_INVALID_STREAM                        10006  // there is not a valid stream
 #define FFP_ERROR_DRM_DEVICE_UNSUPPORT                  10010  // device unsupport drm
 #define FFP_ERROR_DRM_ACQUIRE_FAIL                      10011  // drm key aquire fail
+#define FFP_ERROR_ABR_FAIL                              10012  // abr fail
 
 #endif

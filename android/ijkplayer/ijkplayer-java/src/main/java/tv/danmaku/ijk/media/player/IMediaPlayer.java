@@ -63,6 +63,9 @@ public interface IMediaPlayer {
     int MEDIA_INFO_READ_FIRST_VIDEO_FRAME = 10010;
     int MEDIA_INFO_READ_FIRST_AUDIO_FRAME = 10011;
     int MEDIA_INFO_DRM_KEY_LOADED = 10012;
+    int MEDIA_INFO_ACCELERATED_CODEC_FAIL = 10013;
+    int MEDIA_INFO_STREAM_INFO_CHANGED = 10014;
+    int MEDIA_INFO_READ_STREAM_CHANGED = 10015;
     int MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE = 10100;
 
     int MEDIA_ERROR_UNKNOWN = 1;
@@ -163,14 +166,12 @@ public interface IMediaPlayer {
 
     void setOnTimedTextListener(OnTimedTextListener listener);
 
-    // trackType 1: audio, 2: video, 3: subtitle
-    // exo only for now
-    void setTrack(int trackType, int trackId);
-
-    int getCurrentTrack(int trackType);
+    void setOnDrmInitInfoListener(OnDrmInitInfoListener listener);
 
     // not just for drm scenes, use when exo
     void setDrmInfo(int drmType, boolean multiSession, String licenceServerUrl, Map<String, String> headers, String reqMethod);
+
+    void setDrmInfo(int drmType, boolean multiSession, String licenceServerUrl, Map<String, String> headers, String reqMethod, byte[] offlineLicenseKeySetId);
 
     /*--------------------
      * Listeners
@@ -208,6 +209,10 @@ public interface IMediaPlayer {
         void onTimedText(IMediaPlayer mp, IjkTimedText text);
     }
 
+    interface OnDrmInitInfoListener {
+        void onDrmInitInfo(IMediaPlayer mp, String drmInitInfo);
+    }
+
     /*--------------------
      * Optional
      */
@@ -232,6 +237,12 @@ public interface IMediaPlayer {
      */
     ITrackInfo[] getTrackInfo();
 
+    int getSelectedTrack(int trackType);
+
+    void selectTrack(int track);
+
+    void deselectTrack(int track);
+
     /*--------------------
      * AndroidMediaPlayer: ICE_CREAM_SANDWICH:
      */
@@ -243,4 +254,6 @@ public interface IMediaPlayer {
     void setDataSource(IMediaDataSource mediaDataSource);
 
     String getVideoCodecName();
+
+    void updateDrmInitInfo(String stringObj);
 }

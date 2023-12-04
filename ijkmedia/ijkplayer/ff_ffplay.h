@@ -33,6 +33,7 @@ void      ffp_global_init();
 void      ffp_global_uninit();
 void      ffp_global_set_log_report(int use_report);
 void      ffp_global_set_log_level(int log_level);
+void      ffp_global_set_dump_root(const char* root_path);
 void      ffp_global_set_inject_callback(ijk_inject_callback cb);
 void      ffp_io_stat_register(void (*cb)(const char *url, int type, int bytes));
 void      ffp_io_stat_complete_register(void (*cb)(const char *url,
@@ -121,6 +122,7 @@ struct IjkMediaMeta *ffp_get_meta_l(FFPlayer *ffp);
 
 int       ffp_update_drm_init_info(FFPlayer *ffp, const char *drm_info, size_t len, int flag);
 int       ffp_update_drm_init_info2(FFPlayer *ffp, AVPacket *pkt, int flag);
+int       ffp_playing_stream_changed(FFPlayer *ffp, Decoder *d, int new_stream);
 
 int       ffp_play_next_url(FFPlayer *ffp, const char *url);
 

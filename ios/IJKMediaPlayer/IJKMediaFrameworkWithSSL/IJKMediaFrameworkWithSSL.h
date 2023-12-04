@@ -25,6 +25,7 @@ FOUNDATION_EXPORT const unsigned char IJKMediaFrameworkWithSSLVersionString[];
 #import <IJKMediaFrameworkWithSSL/IJKMediaPlayer.h>
 #import <IJKMediaFrameworkWithSSL/IJKNotificationManager.h>
 #import <IJKMediaFrameworkWithSSL/IJKKVOController.h>
+#import <IJKMediaFrameworkWithSSL/IJKBandwidthMeter.h>
 
 // backward compatible for old names
 #define IJKMediaPlaybackIsPreparedToPlayDidChangeNotification IJKMPMediaPlaybackIsPreparedToPlayDidChangeNotification

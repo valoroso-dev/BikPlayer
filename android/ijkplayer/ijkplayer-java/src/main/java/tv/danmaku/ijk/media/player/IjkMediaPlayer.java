@@ -50,10 +50,14 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import tv.danmaku.ijk.media.common.abr.BandwidthMeter;
+import tv.danmaku.ijk.media.common.abr.DefaultBandwidthMeter;
 import tv.danmaku.ijk.media.common.drm.DrmConstant;
 import tv.danmaku.ijk.media.common.drm.DrmInitInfo;
 import tv.danmaku.ijk.media.common.drm.DrmInitInfoParser;
@@ -154,6 +158,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static final int FFP_PROP_INT64_TCP_SPEED                        = 20200;
     public static final int FFP_PROP_INT64_LATEST_SEEK_LOAD_DURATION        = 20300;
     public static final int FFP_PROP_INT64_IMMEDIATE_RECONNECT              = 20211;
+    public static final int FFP_PROP_INT64_CURRENT_BANDWIDTH                = 20212;
+    public static final int FFP_PROP_INT64_ADAPTIVE_PLAYBACK                = 20213;
+    public static final int FFP_PROP_INT64_ADAPTIVE_MEDIACODEC              = 20214;
     //----------------------------------------
 
     @AccessedByNative
@@ -185,6 +192,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private String mVideoCodecName = "unknown";
 
     private DrmManager mDrmManager;
+    private final HashMap<String, Long> mSegmentMap = new HashMap<>();
+    private BandwidthMeter mBandwidthMeter;
+    private long mCurrentBandwidth;
+    private String mDrmInitInfo = null;
 
     /**
      * Default library loader
@@ -330,10 +341,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     }
 
     @Override
-    public void setDrmInfo(int drmType, boolean multiSession, String licenseServerUrl, Map<String, String> headers, String reqMethod) {
+    public void setDrmInfo(int drmType, boolean multiSession, String licenseServerUrl, Map<String, String> headers, String reqMethod, byte[] offlineLicenseKeySetId) {
         Log.i(TAG, "setDrmInfo drmType=" + drmType + ",multiSession=" + multiSession + " " + licenseServerUrl + " "
-                + headers + " " + reqMethod + " " + Build.VERSION.SDK_INT);
-        super.setDrmInfo(drmType, multiSession, licenseServerUrl, headers, reqMethod);
+                + headers + " " + reqMethod + " " + Arrays.toString(offlineLicenseKeySetId) + " " + Build.VERSION.SDK_INT);
+        super.setDrmInfo(drmType, multiSession, licenseServerUrl, headers, reqMethod, offlineLicenseKeySetId);
         if (drmType == DRM_TYPE_NULL) {
             return;
         } else if (drmType == DRM_TYPE_WIDEVINE) {
@@ -351,6 +362,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                         notifyOnError(MEDIA_DRM_ERROR, code);
                     }
                 });
+                mDrmManager.setOfflineLicenseKeySetId(offlineLicenseKeySetId);
+                mDrmManager.prepare();
             } else {
                 throw new IllegalArgumentException("only Android level 18 or above support drm");
             }
@@ -361,6 +374,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         } else {
             throw new IllegalArgumentException("not support drm type " + drmType);
         }
+    }
+
+    public void setBandwidthMeter(BandwidthMeter meter) {
+        mBandwidthMeter = meter;
     }
 
     /**
@@ -571,12 +588,6 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void prepareAsync() throws IllegalStateException {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            if (mDrmManager != null) {
-                mDrmManager.prepare();
-            }
-
-        }
         // reset log level to debug
         if (Log.isLoggable("IJKPDEBUG", Log.VERBOSE)) {
             Log.v("IJKPDEBUG", "force change ijk player log level to verbose!");
@@ -693,7 +704,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return trackInfos.toArray(new IjkTrackInfo[trackInfos.size()]);
     }
 
-    // TODO: @Override
+    @Override
     public int getSelectedTrack(int trackType) {
         switch (trackType) {
             case ITrackInfo.MEDIA_TRACK_TYPE_VIDEO:
@@ -707,25 +718,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
     }
 
-    // experimental, should set DEFAULT_MIN_FRAMES and MAX_MIN_FRAMES to 25
-    // TODO: @Override
+    @Override
     public void selectTrack(int track) {
         _setStreamSelected(track, true);
     }
 
-    // experimental, should set DEFAULT_MIN_FRAMES and MAX_MIN_FRAMES to 25
-    // TODO: @Override
+    @Override
     public void deselectTrack(int track) {
         _setStreamSelected(track, false);
-    }
-
-    @Override
-    public final void setTrack(int trackType, int trackId) {
-    }
-
-    @Override
-    public final int getCurrentTrack(int trackType) {
-        return -1;
     }
 
     private native void _setStreamSelected(int stream, boolean select);
@@ -783,12 +783,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         stayAwake(false);
         updateSurfaceScreenOn();
         resetListeners();
-        _release();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
             if (mDrmManager != null) {
                 mDrmManager.release();
             }
         }
+        _release();
     }
 
     private native void _release();
@@ -923,6 +923,10 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     public long getSeekLoadDuration() {
         return _getPropertyLong(FFP_PROP_INT64_LATEST_SEEK_LOAD_DURATION, 0);
+    }
+
+    public long getCurrentBandwidth() {
+        return _getPropertyLong(FFP_PROP_INT64_CURRENT_BANDWIDTH, 0);
     }
 
     private native float _getPropertyFloat(int property, float defaultValue);
@@ -1080,6 +1084,13 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
             switch (msg.what) {
             case MEDIA_PREPARED:
+                long adaptivePlayback = player._getPropertyLong(FFP_PROP_INT64_ADAPTIVE_PLAYBACK, 0);
+                if (adaptivePlayback != 0 && player.mBandwidthMeter == null) {
+                    player.setBandwidthMeter(new DefaultBandwidthMeter());
+                }
+                if (player.mDrmInitInfo != null) {
+                    player.notifyOnDrmInitInfo(player.mDrmInitInfo);
+                }
                 player.notifyOnPrepared();
                 return;
 
@@ -1232,6 +1243,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         int EVENT_DID_HTTP_OPEN = 0x2;                  // ARG_URL, ARG_ERROR, ARG_HTTP_CODE
         int EVENT_WILL_HTTP_SEEK = 0x3;                 // ARG_URL, ARG_OFFSET
         int EVENT_DID_HTTP_SEEK = 0x4;                  // ARG_URL, ARG_OFFSET, ARG_ERROR, ARG_HTTP_CODE, ARG_FILE_SIZE
+        int EVENT_DID_HTTP_READ_END = 0x5;              // ARG_URL, ARG_FILE_SIZE
 
         String ARG_URL = "url";
         String ARG_SEGMENT_INDEX = "segment_index";
@@ -1287,6 +1299,38 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 args.putString(OnNativeInvokeListener.ARG_URL, newUrl);
                 return true;
             }
+            case OnNativeInvokeListener.EVENT_WILL_HTTP_OPEN: {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR1) {
+                    String url = args.getString(OnNativeInvokeListener.ARG_URL, "");
+                    player.mSegmentMap.put(url, System.currentTimeMillis());
+                }
+                return true;
+            }
+            case OnNativeInvokeListener.EVENT_DID_HTTP_READ_END: {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR1) {
+                    String url = args.getString(OnNativeInvokeListener.ARG_URL, "");
+                    long fileSize = args.getLong(OnNativeInvokeListener.ARG_FILE_SIZE, 0);
+                    Long startTime = player.mSegmentMap.remove(url);
+                    if (startTime == null) {
+                        Log.e(TAG, "EVENT_DID_HTTP_READ_END could not find segment : " + url);
+                        return true;
+                    }
+                    if (url.endsWith(".m3u8") || url.endsWith(".mpd")) {
+                        return true;
+                    }
+                    long sampleElapsedTimeMs = System.currentTimeMillis() - startTime;
+                    BandwidthMeter bandwidthMeter = player.mBandwidthMeter;
+                    if (bandwidthMeter != null) {
+                        bandwidthMeter.addSample(fileSize, sampleElapsedTimeMs);
+                        long newBandwidth = bandwidthMeter.getBitrateEstimate();
+                        if (player.mCurrentBandwidth != newBandwidth) {
+                            player.mCurrentBandwidth = newBandwidth;
+                            player._setPropertyLong(FFP_PROP_INT64_CURRENT_BANDWIDTH, newBandwidth);
+                        }
+                    }
+                }
+                return true;
+            }
             default:
                 return false;
         }
@@ -1297,7 +1341,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      */
 
     public interface OnMediaCodecSelectListener {
-        String onMediaCodecSelect(IMediaPlayer mp, String mimeType, int profile, int level);
+        MediaCodecInfo onMediaCodecSelect(IMediaPlayer mp, String mimeType, int profile, int level);
     }
     private OnMediaCodecSelectListener mOnMediaCodecSelectListener;
     public void setOnMediaCodecSelectListener(OnMediaCodecSelectListener listener) {
@@ -1324,7 +1368,22 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         if (listener == null)
             listener = DefaultMediaCodecSelector.sInstance;
 
-        player.mVideoCodecName = listener.onMediaCodecSelect(player, mimeType, profile, level);
+        MediaCodecInfo mediaCodecInfo = listener.onMediaCodecSelect(player, mimeType, profile, level);
+        if (mediaCodecInfo == null) {
+            return null;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            player.mVideoCodecName = mediaCodecInfo.getName();
+        } else {
+            player.mVideoCodecName = null;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            MediaCodecInfo.CodecCapabilities capabilities = mediaCodecInfo.getCapabilitiesForType(mimeType);
+            if (capabilities != null) {
+                long supportAdaptive = capabilities.isFeatureSupported(MediaCodecInfo.CodecCapabilities.FEATURE_AdaptivePlayback) ? 1 : 0;
+                player._setPropertyLong(FFP_PROP_INT64_ADAPTIVE_MEDIACODEC, supportAdaptive);
+            }
+        }
         return player.mVideoCodecName;
     }
 
@@ -1348,6 +1407,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 if (state.ordinal() < minValue.ordinal()) {
                     minValue = state;
                 }
+            }
+            if (player.mDrmInitInfo == null || drmInitInfoList.size() >= 2) {
+                player.mDrmInitInfo = stringObj;
             }
             return minValue.ordinal();
         }
@@ -1391,12 +1453,31 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return STATE_UNKNOWN.ordinal();
     }
 
+    @Override
+    public void updateDrmInitInfo(String stringObj) {
+        if (TextUtils.isEmpty(stringObj)) {
+            Log.e(TAG, "invalid drmInitInfo obj = " + stringObj);
+            return;
+        }
+        if (mDrmManager == null) {
+            Log.e(TAG, "must call setDrmInfo first!");
+            return;
+        }
+        Log.i(TAG, "updateDrmInitInfo = " + stringObj);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            List<DrmInitInfo> drmInitInfoList = DrmInitInfoParser.parse(stringObj);
+            for (DrmInitInfo drmInitInfo : drmInitInfoList) {
+                mDrmManager.acquireSession(drmInitInfo, 2);
+            }
+        }
+    }
+
     public static class DefaultMediaCodecSelector implements OnMediaCodecSelectListener {
         public static final DefaultMediaCodecSelector sInstance = new DefaultMediaCodecSelector();
 
         @SuppressWarnings("deprecation")
         @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-        public String onMediaCodecSelect(IMediaPlayer mp, String mimeType, int profile, int level) {
+        public MediaCodecInfo onMediaCodecSelect(IMediaPlayer mp, String mimeType, int profile, int level) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
                 return null;
 
@@ -1453,11 +1534,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             }
 
             Log.i(TAG, String.format(Locale.US, "selected codec: %s rank=%d", bestCodec.mCodecInfo.getName(), bestCodec.mRank));
-            return bestCodec.mCodecInfo.getName();
+            return bestCodec.mCodecInfo;
         }
     }
 
     public static native void native_profileBegin(String libName);
     public static native void native_profileEnd();
     public static native void native_setLogLevel(int level);
+    public static native void native_setDumpRoot(String path);
 }

@@ -212,6 +212,7 @@ public class IjkMediaCodecInfo {
             Range<Integer> frameRateRange = null;
             int widthAlignment = 0;
             int heightAlignment = 0;
+            boolean supportAdaptive = false;
             if (caps != null) {
                 MediaCodecInfo.VideoCapabilities videoCapabilities = caps.getVideoCapabilities();
                 if (videoCapabilities != null) {
@@ -221,11 +222,12 @@ public class IjkMediaCodecInfo {
                     widthAlignment = videoCapabilities.getWidthAlignment();
                     heightAlignment = videoCapabilities.getHeightAlignment();
                 }
+                supportAdaptive = caps.isFeatureSupported(CodecCapabilities.FEATURE_AdaptivePlayback);
             }
 
             Log.i(TAG,
-                    String.format(Locale.US, " widthRange:%s, heightRange:%s, frameRateHeight:%s, widthAlignment:%s, heightAlignment:%s",
-                            widthRange, heightRange, frameRateRange, widthAlignment, heightAlignment));
+                    String.format(Locale.US, " widthRange:%s, heightRange:%s, frameRateHeight:%s, widthAlignment:%s, heightAlignment:%s, adaptive:%s",
+                            widthRange, heightRange, frameRateRange, widthAlignment, heightAlignment, supportAdaptive));
         } catch (Throwable e) {
             Log.i(TAG, "dumpCodecCapabilities: exception");
         }

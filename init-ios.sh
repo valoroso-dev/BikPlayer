@@ -16,12 +16,14 @@
 # limitations under the License.
 #
 
-IJK_FFMPEG_UPSTREAM=https://github.com/valoroso-dev/FFmpeg.git
-IJK_FFMPEG_FORK=https://github.com/valoroso-dev/FFmpeg.git
-IJK_FFMPEG_COMMIT=ff4.0.6--20230822--001
+source ./init-repo-url.sh
+
+IJK_FFMPEG_UPSTREAM=$BIK_PLAYER_FFMPEG_UPSTREAM
+IJK_FFMPEG_FORK=$BIK_PLAYER_FFMPEG_FORK
+IJK_FFMPEG_COMMIT=$BIK_PLAYER_FFMPEG_COMMIT
 IJK_FFMPEG_LOCAL_REPO=extra/ffmpeg
 
-IJK_GASP_UPSTREAM=https://github.com/valoroso-dev/gas-preprocessor.git
+IJK_GASP_UPSTREAM=$BIK_PLAYER_GASP_UPSTREAM
 
 # gas-preprocessor backup
 # https://github.com/valoroso-dev/gas-preprocessor.git

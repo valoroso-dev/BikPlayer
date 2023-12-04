@@ -85,19 +85,10 @@
     _recipient = nil;
     _keySession = [AVContentKeySession contentKeySessionWithKeySystem: AVContentKeySystemFairPlayStreaming storageDirectoryAtURL:[NSURL URLWithString:NSTemporaryDirectory()]];
     [_keySession setDelegate:self queue:dispatch_queue_create("IJKMEDIA.ContentKeyDelegateQueue", DISPATCH_QUEUE_CONCURRENT)];
-    _mayRequireContentKeysForMediaDataProcessing = TRUE;
-    [_keySession addContentKeyRecipient:self];
     self.sessionState = FPS_SESSION_STATE_IDLE;
     self.fromEngine = FALSE;
     return self;
 }
-
-@synthesize mayRequireContentKeysForMediaDataProcessing = _mayRequireContentKeysForMediaDataProcessing;
-
-//- (void)contentKeySession:(AVContentKeySession *)contentKeySession didProvideContentKey:(AVContentKey *)contentKey
-//API_AVAILABLE(ios(14.5)){
-//    NSLog(@"IJKMEDIA ContentKeyManager contentKey is created");
-//}
 
 - (id)setFairPlayCertificate:(NSString *)fpsCertificateUrl licensingUrl:(NSString *)fpsLicensingServiceUrl params:(NSDictionary *)fpsParams
 {

@@ -196,6 +196,10 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(mediacodec_handle_resolution_change),     OPTION_INT(0, 0, 1) },
     { "mediacodec-naked-csd",                   "pass to format even it is naked csd",
         OPTION_OFFSET(mediacodec_naked_csd),    OPTION_INT(0, 0, 1) },
+    { "mediacodec-retry-time",                  "max retry time before got first video frame",
+        OPTION_OFFSET(mediacodec_retry_time),    OPTION_INT(10, 0, INT_MAX) },
+    { "mediacodec-adaptive",                    "if the mediacodec support adaptive playback",
+        OPTION_OFFSET(mediacodec_adaptive),      OPTION_INT(0, -1, 1) },
     { "opensles",                           "OpenSL ES: enable",
         OPTION_OFFSET(opensles),            OPTION_INT(0, 0, 1) },
     { "soundtouch",                           "SoundTouch: enable",
@@ -235,6 +239,14 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(dfl_sample_rate),     OPTION_INT(48000, 0, INT_MAX) },
     { "default-nb-channels",                "use default nb channels while find stream info fail",
         OPTION_OFFSET(dfl_nb_channels),     OPTION_INT(2, 0, 32) },
+    { "is-abr-source",                      "0 not abr source, 1 abr source",
+        OPTION_OFFSET(is_abr_source),       OPTION_INT(0, 0, 1) },
+    { "swithc-ideal-stream-interval",       "swithc ideal stream time interval",
+        OPTION_OFFSET(switch_ideal_stream_interval), OPTION_INT(10000, 10000, INT_MAX) },
+    { "swithc-ideal-stream-percentile",     "swithc ideal stream cahce percentile",
+        OPTION_OFFSET(switch_ideal_stream_percentile), OPTION_INT(100, 0, 200) },
+    { "swithc-ideal-stream-duration",       "swithc ideal stream cahce duration",
+        OPTION_OFFSET(switch_ideal_stream_duration), OPTION_INT(5000, 0, INT_MAX) },
     { NULL }
 };
 

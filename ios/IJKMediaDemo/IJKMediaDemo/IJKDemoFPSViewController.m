@@ -39,10 +39,10 @@
 }
 
 - (void)onClickPlayButton {
-    NSURL *url = [NSURL URLWithString:@""];
-    NSString *certificateUrl = @"";
-    NSString *licensingServiceUrl = @"";
-    NSString *licensingToken = @"";
+    NSURL *url = [NSURL URLWithString:@"todo"];
+    NSString *certificateUrl = @"todo";
+    NSString *licensingServiceUrl = @"todo";
+    NSString *licensingToken = @"todo";
 
     [IJKVideoViewController presentFromViewController:self withTitle:[NSString stringWithFormat:@"URL: %@", url] URL:url fpsCertificateUrl:certificateUrl fpsLicensingServiceUrl:licensingServiceUrl fpsLicensingToken:licensingToken completion:^{
 //            [self.navigationController popViewControllerAnimated:NO];

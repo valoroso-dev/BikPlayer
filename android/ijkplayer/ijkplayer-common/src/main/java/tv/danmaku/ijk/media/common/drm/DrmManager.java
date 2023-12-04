@@ -18,9 +18,13 @@ import static tv.danmaku.ijk.media.common.drm.DrmConstant.EXTERNAL_DRM_MANAGER_C
 public interface DrmManager {
     class Factory {
         public DrmManager create(String drmLicenceUrl, Map<String, String> httpRequestHeaders, UUID uuid, boolean multiSession) {
+            return create(drmLicenceUrl, httpRequestHeaders, uuid, multiSession, true, 2);
+        }
+
+        public DrmManager create(String drmLicenceUrl, Map<String, String> httpRequestHeaders, UUID uuid, boolean multiSession, boolean useOkhttp, int level) {
             DrmManager drmManager = null;
             try {
-                drmManager = createExternalDrmManager(drmLicenceUrl, httpRequestHeaders, uuid, multiSession);
+                drmManager = createExternalDrmManager(drmLicenceUrl, httpRequestHeaders, uuid, multiSession, useOkhttp, level);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -32,11 +36,11 @@ public interface DrmManager {
             return drmManager;
         }
 
-        private DrmManager createExternalDrmManager(String drmLicenceUrl, Map<String, String> httpRequestHeaders, UUID uuid, boolean multiSession)
+        private DrmManager createExternalDrmManager(String drmLicenceUrl, Map<String, String> httpRequestHeaders, UUID uuid, boolean multiSession, boolean useOkhttp, int level)
                 throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, InstantiationException {
             Class<?> c = Class.forName(EXTERNAL_DRM_MANAGER_CLASS);
-            Constructor<?> constructor = c.getDeclaredConstructor(String.class, Map.class, UUID.class, boolean.class);
-            return (DrmManager) constructor.newInstance(drmLicenceUrl, httpRequestHeaders, uuid, multiSession);
+            Constructor<?> constructor = c.getDeclaredConstructor(String.class, Map.class, UUID.class, boolean.class, boolean.class, int.class);
+            return (DrmManager) constructor.newInstance(drmLicenceUrl, httpRequestHeaders, uuid, multiSession, useOkhttp, level);
         }
     }
 
@@ -68,6 +72,11 @@ public interface DrmManager {
 
         @Override
         public void setOnDrmErrorListener(OnDrmErrorListener listener) {
+
+        }
+
+        @Override
+        public void setOfflineLicenseKeySetId(byte[] offlineLicenseKeySetId) {
 
         }
     }
@@ -114,4 +123,11 @@ public interface DrmManager {
      * @param listener listener
      */
     void setOnDrmErrorListener(OnDrmErrorListener listener);
+
+    /**
+     * if an offlineLicenseKeySetId is set, the drm session will using it.
+     *
+     * @param offlineLicenseKeySetId The offline license key set identifier
+     */
+    void setOfflineLicenseKeySetId(byte[] offlineLicenseKeySetId);
 }

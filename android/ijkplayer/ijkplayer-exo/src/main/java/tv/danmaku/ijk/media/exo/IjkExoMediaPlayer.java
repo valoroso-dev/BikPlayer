@@ -29,6 +29,8 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
+import androidx.annotation.Nullable;
+
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.Format;
@@ -37,6 +39,7 @@ import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.TracksInfo;
 import com.google.android.exoplayer2.TracksInfo.TrackGroupInfo;
+import com.google.android.exoplayer2.decoder.DecoderReuseEvaluation;
 import com.google.android.exoplayer2.source.DefaultMediaSourceFactory;
 import com.google.android.exoplayer2.source.TrackGroup;
 import com.google.android.exoplayer2.source.TrackGroupArray;
@@ -45,6 +48,7 @@ import com.google.android.exoplayer2.trackselection.MappingTrackSelector.MappedT
 import com.google.android.exoplayer2.trackselection.TrackSelectionOverrides;
 import com.google.android.exoplayer2.trackselection.TrackSelectionOverrides.TrackSelectionOverride;
 import com.google.android.exoplayer2.trackselection.TrackSelectionParameters;
+import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.upstream.BandwidthMeter;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSource;
@@ -57,6 +61,7 @@ import java.io.FileDescriptor;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -94,10 +99,16 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
     private boolean mScreenOnWhilePlaying;
     private boolean mLooping;
     private String mVideoCodecName = "unknown";
+    private final Map<String, Integer> mStartupInfo = new HashMap<>();
+    private long mPrepareTime;
+    private String videoIdSelected;
 
     private long mBufferingTime = 0;
     private long mDuration = 0;
     private long mCurrentPos = 0;
+    private boolean mCurrentPlaying = false;
+    private boolean mCurrentSeeking = false;
+    private long findStreamInfoTime = 0;
     // private long mPrevPos = 0;
     static final int INVOKE_SETSURFACE = 0;
     static final int INVOKE_SETDATASOURCE = 1;
@@ -111,7 +122,6 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
     // gap by obsolete invoke type
     static final int INVOKE_SELECTTRACK = 10;
     static final int INVOKE_SETVOLUME = 11;
-    static final int INVOKE_SELECTTRACK2 = 12;
     static final int INVOKE_RESET = 19;
     static final int INVOKE_RELEASE = 20;
 
@@ -138,6 +148,27 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
             public void onVideoDecoderInitialized(EventTime eventTime, String decoderName, long initializationDurationMs) {
                 super.onVideoDecoderInitialized(eventTime, decoderName, initializationDurationMs);
                 mVideoCodecName = decoderName;
+                notifyOnInfo(MEDIA_INFO_COMPONENT_OPEN, 0, "");
+                mStartupInfo.put("component_open", (int) ((System.nanoTime() - mPrepareTime) / 1000000));
+            }
+
+            @Override
+            public void onVideoInputFormatChanged(EventTime eventTime, Format format, @Nullable DecoderReuseEvaluation decoderReuseEvaluation) {
+                super.onVideoInputFormatChanged(eventTime, format, decoderReuseEvaluation);
+                videoIdSelected = format.id;
+            }
+
+            @Override
+            public void onDrmKeysLoaded(EventTime eventTime) {
+                super.onDrmKeysLoaded(eventTime);
+                notifyOnInfo(MEDIA_INFO_DRM_KEY_LOADED, 0, "");
+                mStartupInfo.put("key_load", (int) ((System.nanoTime() - mPrepareTime) / 1000000));
+            }
+
+            @Override
+            public void onIsPlayingChanged(EventTime eventTime, boolean isPlaying) {
+                super.onIsPlayingChanged(eventTime, isPlaying);
+                mCurrentPlaying = isPlaying;
             }
         };
         mScreenOnWhilePlaying = true;
@@ -146,18 +177,24 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
     }
 
     private void createInternalPlayer(BandwidthMeter bandwidthMeter) {
-        DataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(mAppContext, new DefaultHttpDataSource.Factory());
-        ExoPlayer.Builder builder = new ExoPlayer.Builder(mAppContext, new DefaultMediaSourceFactory(dataSourceFactory))
-                .setTrackSelector(mTrackSelector);
-        if (bandwidthMeter != null) {
-            builder.setBandwidthMeter(bandwidthMeter);
-        }
-        mInternalPlayer = builder.build();
+        mInternalPlayer = createExoPlayer(mAppContext, mTrackSelector, bandwidthMeter);
         mInternalPlayer.addListener(mEventListener);
         mInternalPlayer.addAnalyticsListener(mEventLogger);
         mInternalPlayer.setPlayWhenReady(true);
         updateWakeMode();
         updateLooping();
+    }
+
+    protected ExoPlayer createExoPlayer(Context context, TrackSelector trackSelector, BandwidthMeter bandwidthMeter) {
+        DataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(context, new DefaultHttpDataSource.Factory());
+        ExoPlayer.Builder builder = new ExoPlayer.Builder(context, new DefaultMediaSourceFactory(dataSourceFactory));
+        if (trackSelector != null) {
+            builder.setTrackSelector(trackSelector);
+        }
+        if (bandwidthMeter != null) {
+            builder.setBandwidthMeter(bandwidthMeter);
+        }
+        return builder.build();
     }
 
 
@@ -233,16 +270,19 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
     }
 
     @Override
-    public void setTrack(int trackType, int trackId) {
-        int par = (trackType << 16) | trackId;
-        forwardToWorkThread(INVOKE_SELECTTRACK, par);
+    public void selectTrack(int track) {
+        changeTrackSelection(track, true);
     }
 
-    // TODO: @Override
-    public void selectTrack(int track) {
+    @Override
+    public void deselectTrack(int track) {
+        changeTrackSelection(track, false);
+    }
+
+    private void changeTrackSelection(int track, boolean selected) {
         final ITrackInfo[] trackInfoArray = getTrackInfo();
         if (track < 0 || track >= trackInfoArray.length) {
-            Log.e(TAG, "selectTrack error: invalid track " + track);
+            Log.e(TAG, "changeTrackSelection error: invalid track " + track);
             return;
         }
         ITrackInfo trackInfo = trackInfoArray[track];
@@ -260,12 +300,12 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
                 trackType = C.TRACK_TYPE_TEXT;
                 break;
             default:
-                Log.e(TAG, "selectTrack error: invalid trackType " + trackInfo.getTrackType());
+                Log.e(TAG, "changeTrackSelection error: invalid trackType " + trackInfo.getTrackType());
                 return;
         }
         MappedTrackInfo mappedTrackInfo = mTrackSelector.getCurrentMappedTrackInfo();
         if (mappedTrackInfo == null) {
-            Log.e(TAG, "selectTrack error: invalid mappedTrackInfo");
+            Log.e(TAG, "changeTrackSelection error: invalid mappedTrackInfo");
             return;
         }
         for (int renderIndex = 0; renderIndex < mappedTrackInfo.getRendererCount(); renderIndex++) {
@@ -274,17 +314,13 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
                 break;
             }
         }
-        Log.i(TAG, "selectTrack renderIndex " + targetRenderIndex + " and trackId " + trackId);
+        Log.i(TAG, "changeTrackSelection renderIndex " + targetRenderIndex + " and trackId " + trackId + " " + selected);
         if (!TextUtils.isEmpty(trackId) && targetRenderIndex >= 0) {
-            forwardToWorkThread(INVOKE_SELECTTRACK2, targetRenderIndex, 0, trackId);
+            forwardToWorkThread(INVOKE_SELECTTRACK, targetRenderIndex, selected ? 1 : 0, trackId);
         }
     }
 
-    public void selectTrackInner(int trackType, int trackId) {
-        selectTrackInner(trackType, Integer.toString(trackId));
-    }
-
-    public void selectTrackInner(int trackType, String trackId) {
+    private void selectTrackInner(int trackType, String trackId, boolean selected) {
         Log.d(TAG, "track type " + trackType + " id " + trackId);
         //TracksInfo trackInfo = mInternalPlayer.getCurrentTracksInfo();
         MappedTrackInfo mappedTrackInfo = mTrackSelector.getCurrentMappedTrackInfo();
@@ -313,9 +349,11 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
                 return;
             }
             List<Integer> trackIndices = new ArrayList<>();
-            trackIndices.add(targetTrackIndex);
-            TrackSelectionOverrides overrides = new TrackSelectionOverrides.Builder()
-                    .setOverrideForType(new TrackSelectionOverride(targetTrackGroup, trackIndices))
+            if (selected) {
+                trackIndices.add(targetTrackIndex);
+            }
+            TrackSelectionOverrides overrides = mInternalPlayer.getTrackSelectionParameters().trackSelectionOverrides.buildUpon()
+                    .addOverride(new TrackSelectionOverride(targetTrackGroup, trackIndices))
                     .build();
             mInternalPlayer.setTrackSelectionParameters(mInternalPlayer.getTrackSelectionParameters()
                     .buildUpon().setTrackSelectionOverrides(overrides).build());
@@ -325,7 +363,7 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
     }
 
     @Override
-    public int getCurrentTrack(int trackType) {
+    public int getSelectedTrack(int trackType) {
         ITrackInfo[] trackInfoArray = getTrackInfo();
         if (trackInfoArray == null) {
             return mSelectTrack[trackType];
@@ -340,7 +378,7 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
             if (selected == 1 && trackInfo.getTrackType() == trackType) {
                 if (trackType == ITrackInfo.MEDIA_TRACK_TYPE_VIDEO) {
                     int width = format.getInteger(IjkMediaMeta.IJKM_KEY_WIDTH);
-                    if (mVideoWidth == width) {
+                    if (mVideoWidth == width || TextUtils.equals(videoIdSelected, format.getString(IjkMediaMeta.IJKM_KEY_TRACK_ID))) {
                         return i;
                     }
                 } else {
@@ -369,6 +407,7 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void prepareAsync() throws IllegalStateException {
+        mPrepareTime = System.nanoTime();
         if (inPlayerThread()) {
             prepareAsyncInner();
         } else {
@@ -548,6 +587,9 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
     public boolean isPlaying() {
         if (mInternalPlayer == null)
             return false;
+        if (Thread.currentThread() != mInternalPlayer.getApplicationLooper().getThread()) {
+            return mCurrentPlaying;
+        }
         if (mInternalPlayer.getPlaybackState() == Player.STATE_READY) {
             return mInternalPlayer.getPlayWhenReady();
         }
@@ -566,6 +608,7 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
             return;
         int mediaIndex = mInternalPlayer.getCurrentMediaItemIndex();
         mInternalPlayer.seekTo(mediaIndex, msec);
+        mCurrentSeeking = true;
     }
 
 
@@ -802,6 +845,8 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
                             notifyOnInfo(MEDIA_INFO_AUDIO_RENDERING_START, 0, "");
                         }
                         if (mTracksInfo != null && mTracksInfo.isTypeSelected(C.TRACK_TYPE_VIDEO)) {
+                            mStartupInfo.put("video_render", (int) ((System.nanoTime() - mPrepareTime) / 1000000));
+                            notifyOnInfo(MEDIA_INFO_STARTUP_INFO, 0, mStartupInfo.toString());
                             notifyOnInfo(MEDIA_INFO_VIDEO_RENDERING_START, 0, "");
                         }
                     } else if (currentPlayerState == STATE_BUFFERING) {
@@ -870,6 +915,10 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
         @Override
         public void onTracksInfoChanged(TracksInfo tracksInfo) {
             Log.d(TAG, "exo onTracksInfoChanged");
+            if (findStreamInfoTime == 0) {
+                findStreamInfoTime = System.nanoTime();
+                mStartupInfo.put("find_streaminfo", (int) ((findStreamInfoTime - mPrepareTime) / 1000000));
+            }
             getTrackInfoInner();
         }
 
@@ -880,6 +929,10 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
 
         @Override
         public void onRenderedFirstFrame() {
+            if (mCurrentSeeking) {
+                mCurrentSeeking = false;
+                notifyOnSeekComplete();
+            }
         }
     }
 
@@ -947,16 +1000,10 @@ public class IjkExoMediaPlayer extends AbstractMediaPlayer {
                 }
                 break;
                 case INVOKE_SELECTTRACK: {
-                    int target = (int) msg.obj;
-                    int trackType = (int) target >> 16;
-                    int trackId = (int) target & 0xFFFF;
-                    player.selectTrackInner(trackType, trackId);
-                }
-                break;
-                case INVOKE_SELECTTRACK2: {
                     int trackType = msg.arg1;
+                    int selected = msg.arg2;
                     String trackId = (String) msg.obj;
-                    player.selectTrackInner(trackType, trackId);
+                    player.selectTrackInner(trackType, trackId, selected == 1);
                 }
                 break;
                 case INVOKE_SETVOLUME: {

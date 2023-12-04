@@ -35,6 +35,9 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import tv.danmaku.ijk.media.example.R;
 import tv.danmaku.ijk.media.example.activities.VideoActivity;
 
@@ -89,7 +92,16 @@ public class SampleMediaListFragment extends Fragment {
                 String url = item.mUrl;
                 String licenseUrl = item.mDrmLicenseUrl;
                 String licenseToken = item.mDrmLicenseToken;
-                VideoActivity.intentTo(activity, url, licenseUrl, licenseToken, name);
+                boolean adaptive = item.mAdaptive;
+                Map<String, Object> map = new HashMap<>();
+                if (licenseUrl != null) {
+                    map.put("licenseUrl", licenseUrl);
+                }
+                if (licenseToken != null) {
+                    map.put("licenseToken", licenseToken);
+                }
+                map.put("adaptive", adaptive);
+                VideoActivity.intentTo(activity, url, name, map);
             }
         });
 
@@ -155,13 +167,19 @@ public class SampleMediaListFragment extends Fragment {
                 "}";
 
         //mAdapter.addItem(manifest_string, "las test");
-        mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8", "bipbop basic master playlist");
+        mAdapter.addItem("http://cph-msl.akamaized.net/hls/live/2000341/test/master.m3u8", "[HLS Live]MSL HLS test stream master", true);
+        mAdapter.addItem("http://cph-msl.akamaized.net/hls/live/2000341/test/level_0.m3u8", "[HLS Live]MSL HLS test stream 256x106 @ 0.5Mbps");
+        mAdapter.addItem("http://cph-msl.akamaized.net/hls/live/2000341/test/level_1.m3u8", "[HLS Live]MSL HLS test stream master 640x266 @ 1.5Mbps");
+        mAdapter.addItem("http://cph-msl.akamaized.net/hls/live/2000341/test/level_2.m3u8", "[HLS Live]MSL HLS test stream master 1280x534 @ 2.5Mbps");
+        mAdapter.addItem("http://cph-msl.akamaized.net/hls/live/2000341/test/level_3.m3u8", "[HLS Live]MSL HLS test stream master 1920x800 @ 4.5Mbps");
+        mAdapter.addItem("http://cph-msl.akamaized.net/hls/live/2000341/test/level_4.m3u8", "[HLS Live]MSL HLS test stream master 1920x800 @ 7.5Mbps");
+        mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8", "bipbop basic master playlist", true);
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear1/prog_index.m3u8", "bipbop basic 400x300 @ 232 kbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8", "bipbop basic 640x480 @ 650 kbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear3/prog_index.m3u8", "bipbop basic 640x480 @ 1 Mbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear4/prog_index.m3u8", "bipbop basic 960x720 @ 2 Mbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear0/prog_index.m3u8", "bipbop basic 22.050Hz stereo @ 40 kbps");
-        mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8", "bipbop advanced master playlist");
+        mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8", "bipbop advanced master playlist", true);
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear1/prog_index.m3u8", "bipbop advanced 416x234 @ 265 kbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear2/prog_index.m3u8", "bipbop advanced 640x360 @ 580 kbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/gear3/prog_index.m3u8", "bipbop advanced 960x540 @ 910 kbps");
@@ -179,6 +197,7 @@ public class SampleMediaListFragment extends Fragment {
         String mName;
         String mDrmLicenseUrl;
         String mDrmLicenseToken;
+        boolean mAdaptive;
 
         public SampleMediaItem(String url, String name) {
             mUrl = url;
@@ -202,8 +221,20 @@ public class SampleMediaListFragment extends Fragment {
             add(new SampleMediaItem(url, name));
         }
 
+        public void addItem(String url, String name, boolean adaptive) {
+            SampleMediaItem sampleMediaItem = new SampleMediaItem(url, name);
+            sampleMediaItem.mAdaptive = adaptive;
+            add(sampleMediaItem);
+        }
+
         public void addItem(String url, String name, String licenseUrl, String licenseToken) {
             add(new SampleMediaItem(url, name, licenseUrl, licenseToken));
+        }
+
+        public void addItem(String url, String name, String licenseUrl, String licenseToken, boolean adaptive) {
+            SampleMediaItem sampleMediaItem = new SampleMediaItem(url, name, licenseUrl, licenseToken);
+            sampleMediaItem.mAdaptive = adaptive;
+            add(sampleMediaItem);
         }
 
         @Override

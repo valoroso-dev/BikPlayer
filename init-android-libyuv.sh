@@ -16,10 +16,11 @@
 # limitations under the License.
 #
 
+source ./init-repo-url.sh
 
-IJK_LIBYUV_UPSTREAM=https://github.com/valoroso-dev/libyuv.git
-IJK_LIBYUV_FORK=https://github.com/valoroso-dev/libyuv.git
-IJK_LIBYUV_COMMIT=ijk-r0.2.1-dev
+IJK_LIBYUV_UPSTREAM=$BIK_PLAYER_LIBYUV_UPSTREAM
+IJK_LIBYUV_FORK=$BIK_PLAYER_LIBYUV_FORK
+IJK_LIBYUV_COMMIT=$BIK_PLAYER_LIBYUV_COMMIT
 IJK_LIBYUV_LOCAL_REPO=extra/libyuv
 
 set -e

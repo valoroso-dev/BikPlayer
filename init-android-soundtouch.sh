@@ -16,10 +16,11 @@
 # limitations under the License.
 #
 
+source ./init-repo-url.sh
 
-IJK_SOUNDTOUCH_UPSTREAM=https://github.com/valoroso-dev/soundtouch.git
-IJK_SOUNDTOUCH_FORK=https://github.com/valoroso-dev/soundtouch.git
-IJK_SOUNDTOUCH_COMMIT=ijk-r0.1.2-dev
+IJK_SOUNDTOUCH_UPSTREAM=$BIK_PLAYER_SOUNDTOUCH_UPSTREAM
+IJK_SOUNDTOUCH_FORK=$BIK_PLAYER_SOUNDTOUCH_FORK
+IJK_SOUNDTOUCH_COMMIT=$BIK_PLAYER_SOUNDTOUCH_COMMIT
 IJK_SOUNDTOUCH_LOCAL_REPO=extra/soundtouch
 
 set -e

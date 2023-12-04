@@ -22,6 +22,7 @@
     <string name="seek_cost">seek_cost</string>
     <string name="seek_load_cost">seek_load_cost</string>
     <string name="tcp_speed">tcp_speed</string>
+    <string name="bandwidth">bandwidth</string>
     <string name="bit_rate">bit_rate</string>
 
     <string name="media_information">Media Information</string>

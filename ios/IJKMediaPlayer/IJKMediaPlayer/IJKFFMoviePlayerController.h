@@ -25,6 +25,7 @@
 #import "IJKFFMonitor.h"
 #import "IJKFFOptions.h"
 #import "IJKSDLGLViewProtocol.h"
+#import "IJKBandwidthMeter.h"
 
 // media meta
 #define k_IJKM_KEY_FORMAT         @"format"
@@ -101,6 +102,7 @@ typedef enum IJKLogLevel {
 
 + (void)setLogReport:(BOOL)preferLogReport;
 + (void)setLogLevel:(IJKLogLevel)logLevel;
++ (void)setDumpRoot:(NSString *)path;
 + (BOOL)checkIfFFmpegVersionMatch:(BOOL)showAlert;
 + (BOOL)checkIfPlayerVersionMatch:(BOOL)showAlert
                             version:(NSString *)version;
@@ -131,6 +133,7 @@ typedef enum IJKLogLevel {
 - (void)setPlayerOptionIntValue:    (int64_t)value forKey:(NSString *)key;
 - (void)setAudioTrack:              (int)stream selected:(int)selected;
 - (int64_t)getPropertyInt64:        (int)nameId defaultValue:(int64_t)value;
+- (void)setBandwidth:               (int64_t)bandwidth;
 
 @property (nonatomic, retain) id<IJKMediaUrlOpenDelegate> segmentOpenDelegate;
 @property (nonatomic, retain) id<IJKMediaUrlOpenDelegate> tcpOpenDelegate;
@@ -143,6 +146,10 @@ typedef enum IJKLogLevel {
 
 #pragma mark KVO properties
 @property (nonatomic, readonly) IJKFFMonitor *monitor;
+
+@property (nonatomic, retain) id<IJKBandwidthMeter> bandwidthMeter;
+@property (nonatomic, readonly) NSMutableDictionary *segmentDict;
+@property (nonatomic) long long currentBandwidth;
 
 @end
 
