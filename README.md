@@ -24,6 +24,7 @@ You can experience quick-to-play, media file formats support by the demo APK pro
 - Others
   - Optimized startup cost time for ts format (h.264&h.265 encoding)
   - Update backend Exoplayer to v2.17.1
+  - Adaptive Bitrate Video Streaming
 
 ### Download
 
@@ -43,13 +44,13 @@ allprojects {
 
 dependencies {
     # required, enough for most devices.
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-java:1.3.3'
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-common:1.3.3'
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.3.3'
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-arm64:1.3.3'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-java:1.4.1'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-common:1.4.1'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-armv7a:1.4.1'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-arm64:1.4.1'
 
     # ExoPlayer as IMediaPlayer: optional, experimental
-    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-exo:1.3.3'
+    implementation 'com.github.valoroso-dev.BikPlayerLib:ijkplayer-exo:1.4.1'
 }
 ```
 - iOS

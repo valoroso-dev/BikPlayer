@@ -1,3 +1,7 @@
+tag 1.4.1
+--------------------------------
+support new feature: Adaptive Bitrate Video Streaming
+
 tag 1.3.1
 --------------------------------
 - ffmpeg: upgrade to 4.0.6
@@ -5,8 +9,8 @@ tag 1.3.1
 - ios: support fps via iOS AVPlayer
 - ijkplayer: fix some bugs
 
-tag next
-
+tag 1.1.0
+--------------------------------
 - support DRM with ExoPlayer
 - update ExoPlayer to 2.17.1
 - add logic to startup playing when live
